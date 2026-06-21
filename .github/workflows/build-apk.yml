@@ -1,4 +1,4 @@
-name: Build APK (Fork with Rocdex)
+name: Build APK (Rocdex)
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ on:
       build_mode:
         description: 'Build mode (dev/prod)'
         required: true
-        default: 'dev'
+        default: 'prod'
         type: choice
         options:
           - dev
@@ -54,7 +54,7 @@ jobs:
 
       - name: Setup Cordova Platform & Plugins
         run: |
-          rm -rf platforms/android
+          rm -rf platforms/android plugins
           cordova platform add android@10 --no-telemetry
           node utils/setup.js || true
 
@@ -64,26 +64,96 @@ jobs:
           if [ -f "$WRAPPER_FILE" ]; then
             sed -i 's|gradle-[0-9.]*-all|gradle-8.11-all|g' "$WRAPPER_FILE"
             sed -i 's|gradle-[0-9.]*-bin|gradle-8.11-all|g' "$WRAPPER_FILE"
-            echo "Updated Gradle wrapper:"
             cat "$WRAPPER_FILE"
-          else
-            echo "WARNING: gradle-wrapper.properties not found at $WRAPPER_FILE"
-            ls -la platforms/android/gradle/wrapper/ 2>/dev/null || echo "wrapper dir missing"
           fi
 
-      - name: Build APK with Rocdex
+      - name: Generate signing keystore
+        run: |
+          STORE_FILE="rocdex-release.keystore"
+          STORE_PASS="rocdex2024"
+          KEY_ALIAS="rocdex"
+          keytool -genkeypair -v \
+            -keystore "$STORE_FILE" \
+            -storepass "$STORE_PASS" \
+            -alias "$KEY_ALIAS" \
+            -keypass "$STORE_PASS" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Rocdex, OU=Dev, O=Rocdex, L=Jakarta, ST=ID, C=ID"
+          echo "Keystore created successfully"
+          cat > build.json << BJSON
+          {
+            "android": {
+              "release": {
+                "keystore": "$STORE_FILE",
+                "storePassword": "$STORE_PASS",
+                "alias": "$KEY_ALIAS",
+                "password": "$STORE_PASS"
+              }
+            }
+          }
+          BJSON
+          echo "build.json created"
+          cat build.json
+
+      - name: Build Web Assets
+        run: |
+          node ./utils/config.js ${{ inputs.build_mode == 'prod' && 'p' || 'd' }} ${{ inputs.app_type || 'paid' }}
+          rspack --mode ${{ inputs.build_mode == 'prod' && 'production' || 'development' }}
+
+      - name: Build Release APK
+        if: ${{ inputs.build_mode == 'prod' || github.event_name == 'push' }}
         run: |
           chmod +x utils/scripts/build.sh
-          sh utils/scripts/build.sh ${{ inputs.app_type || 'paid' }} ${{ inputs.build_mode || 'dev' }}
+          sh utils/scripts/build.sh ${{ inputs.app_type || 'paid' }} prod
         env:
           TMPDIR: /tmp
           ANDROID_HOME: /usr/local/lib/android/sdk
 
+      - name: Build Debug APK
+        if: ${{ inputs.build_mode == 'dev' }}
+        run: |
+          chmod +x utils/scripts/build.sh
+          sh utils/scripts/build.sh ${{ inputs.app_type || 'paid' }} dev
+        env:
+          TMPDIR: /tmp
+          ANDROID_HOME: /usr/local/lib/android/sdk
+
+      - name: Rename APK with version
+        if: always()
+        run: |
+          VERSION=$(grep -oP 'version="\K[0-9.]+' config.xml)
+          APK_DIR="platforms/android/app/build/outputs/apk"
+          if [ -d "$APK_DIR" ]; then
+            find "$APK_DIR" -name "*.apk" -exec sh -c '
+              for f; do
+                dir=$(dirname "$f")
+                base=$(basename "$f" .apk)
+                mv "$f" "$dir/acode-rocdex-v${VERSION}-${base}.apk" 2>/dev/null || true
+              fi
+            ' _ {} +
+            echo "APKs renamed with version $VERSION"
+            find "$APK_DIR" -name "*.apk" -exec ls -lh {} \;
+          fi
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: acode-rocdex-${{ inputs.app_type || 'paid' }}-${{ inputs.build_mode || 'dev' }}
+          name: acode-rocdex-${{ inputs.build_mode || 'prod' }}-${{ github.run_number }}
           path: |
             platforms/android/app/build/outputs/apk/**/*.apk
             platforms/android/app/build/outputs/apk/**/*.aab
           if-no-files-found: warn
+
+      - name: Create Release
+        if: ${{ (inputs.build_mode == 'prod' || github.event_name == 'push') && success() }}
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: rocdex-v${{ github.run_number }}
+          name: Rocdex Plugin Build #${{ github.run_number }}
+          files: platforms/android/app/build/outputs/apk/**/*.apk
+          prerelease: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
