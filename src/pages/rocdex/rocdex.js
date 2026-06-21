@@ -56,9 +56,7 @@ export default function openRocdex() {
 		<div className="rocdex-container">
 			<div className="rocdex-header">
 				<h2 className="rocdex-title">Rocdex — Codex UI</h2>
-				<p className="rocdex-subtitle">
-					Codex CLI web interface for Android
-				</p>
+				<p className="rocdex-subtitle">Codex CLI web interface for Android</p>
 			</div>
 			{$statusBar}
 			{$toolbar}
@@ -84,8 +82,7 @@ export default function openRocdex() {
 			? strings.rocdex_stop
 			: strings.rocdex_start;
 		actionBtn.className =
-			"rocdex-btn " +
-			(running ? "rocdex-btn--stop" : "rocdex-btn--start");
+			"rocdex-btn " + (running ? "rocdex-btn--stop" : "rocdex-btn--start");
 		$page.querySelector(".rocdex-btn--open").disabled = !running;
 		if (running) {
 			$iframe.src = SERVER_URL;

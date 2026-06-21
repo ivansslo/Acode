@@ -1,4 +1,5 @@
 import fsOperation from "fileSystem";
+import { selectAll } from "@codemirror/commands";
 import Sidebar from "components/sidebar";
 import { TerminalManager } from "components/terminal";
 import color from "dialogs/color";
@@ -25,7 +26,6 @@ import { runAllTests } from "test/tester";
 import { getColorRange } from "utils/color/regex";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-import { selectAll } from "@codemirror/commands";
 import checkFiles from "./checkFiles";
 import config from "./config";
 import EditorFile from "./editorFile";
