@@ -764,5 +764,15 @@
 	"compact": "Compact",
 	"off": "Off",
 	"quick tools height": "Quick tools height",
-	"quick tools toggler": "Quick tools toggler"
+	"quick tools toggler": "Quick tools toggler",
+	"rocdex_running": "Running",
+	"rocdex_stopped": "Stopped",
+	"rocdex_start": "Start",
+	"rocdex_stop": "Stop",
+	"rocdex_open_in_browser": "Open in Browser",
+	"rocdex_server_started": "Server started at {url}",
+	"rocdex_server_stopped": "Server stopped",
+	"rocdex_failed_start": "Failed to start server: {error}",
+	"rocdex_failed_stop": "Failed to stop server: {error}",
+	"rocdex_node_missing": "Node.js is not available"
 }

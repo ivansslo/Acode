@@ -13,6 +13,7 @@ import FileBrowser from "pages/fileBrowser";
 import plugins from "pages/plugins";
 import Problems from "pages/problems/problems";
 import openWelcomeTab from "pages/welcome/welcome";
+import openRocdex from "pages/rocdex";
 import changeEncoding from "palettes/changeEncoding";
 import changeMode from "palettes/changeMode";
 import changeTheme from "palettes/changeTheme";
@@ -280,6 +281,10 @@ export default {
 
 			case "about":
 				About();
+				break;
+
+			case "rocdex":
+				openRocdex();
 				break;
 
 			default:
