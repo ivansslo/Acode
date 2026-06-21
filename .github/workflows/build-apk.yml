@@ -102,17 +102,15 @@ jobs:
       - name: Rename APK
         if: success()
         run: |
-          VERSION=$(sed -n 's/.*version="\([0-9.]*\)".*/\1/p' config.xml | head -1)
+          VERSION=$(grep -oP 'version="\K[0-9.]+' config.xml || sed -n 's/.*version="\([0-9.]*\)".*/\1/p' config.xml | head -1)
           echo "Detected version: $VERSION"
-          APK_DIR="platforms/android/app/build/outputs/apk"
-          for apk in $(find "$APK_DIR" -name "*.apk" -type f); do
+          find platforms/android/app/build/outputs/apk -name '*.apk' | while read apk; do
             dir=$(dirname "$apk")
             base=$(basename "$apk" .apk)
             mv "$apk" "$dir/acode-rocdex-v${VERSION}-${base}.apk"
           done
-          echo "APK files:"
-          find "$APK_DIR" -name "*.apk" -exec ls -lh {} \;
-
+          echo "Final APK files:"
+          find platforms/android/app/build/outputs/apk -name '*.apk' -exec ls -lh {} \;
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v7
         with:
