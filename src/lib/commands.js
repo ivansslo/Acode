@@ -1,12 +1,10 @@
-import { selectAll } from "@codemirror/commands";
-
+import fsOperation from "fileSystem";
 import Sidebar from "components/sidebar";
 import { TerminalManager } from "components/terminal";
 import color from "dialogs/color";
 import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
-import fsOperation from "fileSystem";
 import actions from "handlers/quickTools";
 import recents from "lib/recents";
 import About from "pages/about";
@@ -27,7 +25,7 @@ import { runAllTests } from "test/tester";
 import { getColorRange } from "utils/color/regex";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-
+import { selectAll } from "@codemirror/commands";
 import checkFiles from "./checkFiles";
 import config from "./config";
 import EditorFile from "./editorFile";
@@ -37,7 +35,6 @@ import run from "./run";
 import saveState from "./saveState";
 import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
-
 function getTabCloseSelectionOptions() {
 	return {
 		unsavedWarning:
