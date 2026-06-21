@@ -52,6 +52,16 @@ jobs:
           node-version: 'lts/*'
           cache: 'npm'
 
+      - name: Replace system Gradle with v8.11
+        run: |
+          # Download and install Gradle 8.11
+          curl -sL https://services.gradle.org/distributions/gradle-8.11-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /opt
+          # Replace the system Gradle 9.x with 8.11
+          rm -rf /usr/share/gradle-9.5.1
+          ln -sf /opt/gradle-8.11 /usr/share/gradle-9.5.1
+          gradle --version | head -2
+
       - name: Install Cordova CLI
         run: npm install -g cordova
 
@@ -70,7 +80,6 @@ jobs:
         env:
           TMPDIR: /tmp
           ANDROID_HOME: /usr/local/lib/android/sdk
-          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v7

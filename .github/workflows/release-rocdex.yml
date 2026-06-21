@@ -59,6 +59,14 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
 
+      - name: Replace system Gradle with v8.11
+        run: |
+          curl -sL https://services.gradle.org/distributions/gradle-8.11-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /opt
+          rm -rf /usr/share/gradle-9.5.1
+          ln -sf /opt/gradle-8.11 /usr/share/gradle-9.5.1
+          gradle --version | head -2
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
