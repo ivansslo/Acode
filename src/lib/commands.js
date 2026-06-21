@@ -35,6 +35,7 @@ import run from "./run";
 import saveState from "./saveState";
 import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
+
 function getTabCloseSelectionOptions() {
 	return {
 		unsavedWarning:
