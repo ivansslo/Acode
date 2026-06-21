@@ -2,7 +2,7 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
     xmlns:android="http://schemas.android.com/apk/res/android"
     id="com.foxdebug.acode.rk.rocdex"
-    version="1.0.0">
+    version="1.0.1">
     <name>Rocdex</name>
     <description>Codex UI integration — manage and view Codex CLI web interface from Acode</description>
 
