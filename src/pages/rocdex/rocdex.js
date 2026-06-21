@@ -112,7 +112,10 @@ export default function openRocdex() {
 				setStatus(false);
 				toast(strings.rocdex_server_stopped);
 			} catch (e) {
-				toast(strings.rocdex_failed_stop.replace("{error}", e.message), "error");
+				toast(
+					strings.rocdex_failed_stop.replace("{error}", e.message),
+					"error",
+				);
 			}
 		} else {
 			try {
@@ -128,7 +131,10 @@ export default function openRocdex() {
 				setStatus(true);
 				toast(strings.rocdex_server_started.replace("{url}", SERVER_URL));
 			} catch (e) {
-				toast(strings.rocdex_failed_start.replace("{error}", e.message), "error");
+				toast(
+					strings.rocdex_failed_start.replace("{error}", e.message),
+					"error",
+				);
 				setStatus(false);
 			}
 		}
