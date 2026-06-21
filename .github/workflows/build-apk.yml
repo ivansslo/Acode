@@ -54,22 +54,22 @@ jobs:
 
       - name: Setup Cordova Platform & Plugins
         run: |
-          # Remove old platform if exists
           rm -rf platforms/android
           cordova platform add android@10 --no-telemetry
           node utils/setup.js || true
 
-      - name: Update Gradle wrapper to 8.11
+      - name: Update Gradle wrapper
         run: |
-          # Update wrapper properties to use Gradle 8.11
-          echo "distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11-all.zip
-          networkTimeout=10000
-          validateDistributionUrl=true
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists" > platforms/android/gradle/wrapper/gradle-wrapper.properties
-          cat platforms/android/gradle/wrapper/gradle-wrapper.properties
+          WRAPPER_FILE="platforms/android/gradle/wrapper/gradle-wrapper.properties"
+          if [ -f "$WRAPPER_FILE" ]; then
+            sed -i 's|gradle-[0-9.]*-all|gradle-8.11-all|g' "$WRAPPER_FILE"
+            sed -i 's|gradle-[0-9.]*-bin|gradle-8.11-all|g' "$WRAPPER_FILE"
+            echo "Updated Gradle wrapper:"
+            cat "$WRAPPER_FILE"
+          else
+            echo "WARNING: gradle-wrapper.properties not found at $WRAPPER_FILE"
+            ls -la platforms/android/gradle/wrapper/ 2>/dev/null || echo "wrapper dir missing"
+          fi
 
       - name: Build APK with Rocdex
         run: |
