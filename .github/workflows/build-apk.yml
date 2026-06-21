@@ -25,7 +25,9 @@ on:
       - 'src/**'
       - 'package.json'
       - 'config.xml'
-      - 'rspack.config.js'
+
+env:
+  GRADLE_VERSION: "8.10"
 
 permissions:
   contents: write
@@ -54,9 +56,10 @@ jobs:
           node-version: 'lts/*'
           cache: 'npm'
 
-      - name: Enable Gradle Build Cache
+      - name: Set up Gradle ${{ env.GRADLE_VERSION }}
         uses: gradle/actions/setup-gradle@v4
         with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
 
       - name: Install Cordova CLI
@@ -76,6 +79,7 @@ jobs:
           sh utils/scripts/build.sh ${{ inputs.app_type || 'paid' }} ${{ inputs.build_mode || 'dev' }}
         env:
           TMPDIR: /tmp
+          ANDROID_HOME: /usr/local/lib/android/sdk
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.jvmargs=-Xmx4g"
 
       - name: Upload APK Artifact
