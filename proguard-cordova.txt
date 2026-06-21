@@ -1,0 +1,19 @@
+# Cordova plugins are loaded via reflection from config.xml
+# Keep all plugin classes to prevent R8/ProGuard from stripping them
+-keep class org.apache.cordova.** { *; }
+-keep class com.foxdebug.acode.rk.** { *; }
+-keep class com.foxdebug.acode.** { *; }
+-keep class * extends org.apache.cordova.CordovaPlugin { *; }
+-keep class * extends org.apache.cordova.CordovaActivity { *; }
+
+# Keep Cordova CordovaLib classes
+-keep class org.apache.cordova.CordovaWebView { *; }
+-keep class org.apache.cordova.CordovaWebViewImpl { *; }
+-keep class org.apache.cordova.CordovaWebViewEngine { *; }
+-keep class org.apache.cordova.engine.SystemWebView { *; }
+-keep class org.apache.cordova.engine.SystemWebViewEngine { *; }
+
+# Keep JavaScript interface bridge
+-keep class org.apache.cordova.PluginEntry { *; }
+-keep class org.apache.cordova.NativeToJsMessageQueue { *; }
+-keep class org.apache.cordova.ExposedJsApi { *; }

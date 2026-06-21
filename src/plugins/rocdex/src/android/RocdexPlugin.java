@@ -12,7 +12,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.CordovaWebView;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -34,6 +36,14 @@ public class RocdexPlugin extends CordovaPlugin {
     private Future<?> serverProcess;
     private int serverPort = DEFAULT_PORT;
     private boolean serverRunning = false;
+    private boolean initialized = false;
+
+    @Override
+    public void initialize(CordovaInterface cordova, CordovaWebView webView) {
+        super.initialize(cordova, webView);
+        initialized = true;
+        Log.d(TAG, "RocdexPlugin initialized successfully");
+    }
 
     // ── Cordova entry point ──────────────────────────────────────────────
 
@@ -243,7 +253,11 @@ public class RocdexPlugin extends CordovaPlugin {
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
+        try {
+            super.onDestroy();
+        } catch (Exception ignored) {
+            // Cordova super may throw during teardown
+        }
         // Best-effort cleanup
         try {
             Runtime.getRuntime().exec(
@@ -251,5 +265,6 @@ public class RocdexPlugin extends CordovaPlugin {
         } catch (Exception ignored) {
         }
         serverRunning = false;
+        executor.shutdownNow();
     }
 }

@@ -2,6 +2,13 @@ android {
     packagingOptions {
         pickFirst 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
     }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-cordova.txt'
+        }
+    }
 }
 
 configurations {
