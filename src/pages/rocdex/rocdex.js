@@ -20,7 +20,9 @@ export default function openRocdex() {
 	$page.classList.add("rocdex-page");
 
 	let statusDot = <span className="rocdex-status-dot rocdex-status--off" />;
-	let statusLabel = <span className="rocdex-status-label">{strings.rocdex_stopped}</span>;
+	let statusLabel = (
+		<span className="rocdex-status-label">{strings.rocdex_stopped}</span>
+	);
 	let actionBtn = (
 		<button className="rocdex-btn rocdex-btn--start">
 			{strings.rocdex_start}
@@ -112,7 +114,10 @@ export default function openRocdex() {
 				setStatus(false);
 				toast(strings.rocdex_server_stopped);
 			} catch (e) {
-				toast(strings.rocdex_failed_stop.replace("{error}", e.message), "error");
+				toast(
+					strings.rocdex_failed_stop.replace("{error}", e.message),
+					"error",
+				);
 			}
 		} else {
 			try {
