@@ -1,0 +1,158 @@
+name: Release Rocdex Plugin APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      create_upstream_pr:
+        description: 'Create PR to upstream (Acode-Foundation/acode)'
+        required: false
+        default: false
+        type: boolean
+      pr_title:
+        description: 'PR title (if creating upstream PR)'
+        required: false
+        default: 'feat: add Rocdex Codex CLI integration plugin'
+        type: string
+      build_type:
+        description: 'Build type (debug/release)'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 'lts/*'
+          cache: npm
+
+      - name: Enable Gradle Build Cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build web assets (with Rocdex)
+        run: npm run build
+        env:
+          NODE_ENV: ${{ github.event.inputs.build_type == 'release' && 'production' || 'development' }}
+
+      - name: Setup Cordova & Plugins
+        run: node utils/setup.js
+
+      - name: Build APK
+        run: |
+          chmod +x utils/scripts/build.sh
+          sh utils/scripts/build.sh paid ${{ github.event.inputs.build_type || 'dev' }}
+        env:
+          TMPDIR: /tmp
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.jvmargs=-Xmx4g"
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: acode-rocdex-apk-${{ github.event.inputs.build_type || 'debug' }}
+          path: |
+            platforms/android/app/build/outputs/apk/**/*.apk
+            platforms/android/app/build/outputs/apk/**/*.aab
+          if-no-files-found: warn
+
+  create-upstream-pr:
+    needs: build
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.create_upstream_pr }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout upstream repo
+        uses: actions/checkout@v7
+        with:
+          repository: Acode-Foundation/acode
+          ref: main
+          token: ${{ secrets.GH_PAT }}
+          path: upstream
+
+      - name: Checkout fork repo
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.ref_name }}
+          token: ${{ secrets.GH_PAT }}
+          path: fork
+
+      - name: Copy Rocdex files to upstream
+        run: |
+          # Copy plugin files
+          cp -r fork/src/plugins/rocdex upstream/src/plugins/rocdex
+          # Copy page files
+          cp -r fork/src/pages/rocdex upstream/src/pages/rocdex
+          # Copy sidebar app
+          cp -r fork/src/sidebarApps/rocdex upstream/src/sidebarApps/rocdex
+
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GH_PAT }}
+          path: upstream
+          commit-message: 'feat: add Rocdex Codex CLI integration plugin'
+          title: ${{ inputs.pr_title || 'feat: add Rocdex Codex CLI integration plugin' }}
+          body: |
+            ## Rocdex Plugin Integration
+
+            This PR adds the Rocdex plugin for Codex CLI web UI integration into Acode.
+
+            ### Changes:
+            - **Cordova Plugin**: Native Android plugin to manage codexapp lifecycle
+            - **Page**: Full UI with status indicator, start/stop controls, and iframe
+            - **Sidebar App**: Quick-access icon in the sidebar
+            - **i18n**: Added Rocdex-specific localization strings
+
+            ### Files Added:
+            - `src/plugins/rocdex/` - Cordova plugin (manifest, JS API, Java native)
+            - `src/pages/rocdex/` - Page UI component
+            - `src/sidebarApps/rocdex/` - Sidebar integration
+
+            ### Files Modified:
+            - `src/sidebarApps/index.js` - Added Rocdex to sidebar apps
+            - `src/lib/commands.js` - Added "rocdex" command
+            - `src/lang/en-us.json` - Added Rocdex strings
+            - `package.json` - Added plugin reference
+
+            ### Usage:
+            Access Rocdex from the sidebar or command palette to start/stop the Codex CLI web interface.
+          branch: feat/rocdex-plugin
+          base: main
+          delete-branch: true

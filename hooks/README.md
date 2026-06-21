@@ -1,23 +1,18 @@
-<!--
-#
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-#  KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-#
--->
-# Cordova Hooks
+# Acode Hooks
 
-Cordova Hooks represent special scripts which could be added by application and plugin developers or even by your own build system  to customize cordova commands. See Hooks Guide for more details:  http://cordova.apache.org/docs/en/edge/guide_appdev_hooks_index.md.html#Hooks%20Guide.
+This directory contains Cordova lifecycle hooks.
+
+## Currently Active
+
+- No custom hooks currently registered for Rocdex.
+
+## Adding Hooks
+
+To add a hook, create a `.js` file named after the Cordova lifecycle event:
+
+- `before_plugin_add.js` - Before plugin is added
+- `after_plugin_add.js` - After plugin is added
+- `before_build.js` - Before build starts
+- `after_build.js` - After build completes
+
+See [Cordova Hooks Guide](https://cordova.apache.org/docs/en/latest/guide/appdev/hooks/) for more info.

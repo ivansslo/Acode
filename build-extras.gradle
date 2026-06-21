@@ -1,6 +1,20 @@
 android {
     packagingOptions {
         pickFirst 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
+        pickFirst 'META-INF/DEPENDENCIES'
+        pickFirst 'META-INF/LICENSE'
+        pickFirst 'META-INF/LICENSE.txt'
+        pickFirst 'META-INF/NOTICE'
+        pickFirst 'META-INF/NOTICE.txt'
+        pickFirst 'META-INF/AL2.0'
+        pickFirst 'META-INF/LGPL2.1'
+        // Exclude duplicate Bouncy Castle files
+        exclude '**/bcprov-*.jar'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 }
 
@@ -12,4 +26,10 @@ configurations {
       exclude group: 'org.bouncycastle', module: 'bcpkix-jdk18on'
       exclude group: 'org.bouncycastle', module: 'bcprov-jdk18on'
   }
+}
+
+// Gradle Build Optimization
+tasks.withType(JavaCompile).configureEach {
+    options.fork = true
+    options.incremental = true
 }

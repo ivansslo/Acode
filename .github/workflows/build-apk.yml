@@ -1,4 +1,4 @@
-name: Build APK (Fork)
+name: Build APK (Fork with Rocdex)
 
 on:
   workflow_dispatch:
@@ -19,6 +19,16 @@ on:
         options:
           - dev
           - prod
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'config.xml'
+      - 'rspack.config.js'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -44,28 +54,34 @@ jobs:
           node-version: 'lts/*'
           cache: 'npm'
 
+      - name: Enable Gradle Build Cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+
       - name: Install Cordova CLI
         run: npm install -g cordova
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Setup Cordova Platform & Plugins
+      - name: Setup Cordova Platform & Plugins (including Rocdex)
         run: |
           cordova platform add android@10 --no-telemetry || true
           node utils/setup.js || true
 
-      - name: Build APK
+      - name: Build APK with Rocdex
         run: |
           chmod +x utils/scripts/build.sh
-          sh utils/scripts/build.sh ${{ inputs.app_type }} ${{ inputs.build_mode }}
+          sh utils/scripts/build.sh ${{ inputs.app_type || 'paid' }} ${{ inputs.build_mode || 'dev' }}
         env:
           TMPDIR: /tmp
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.jvmargs=-Xmx4g"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: acode-${{ inputs.app_type }}-${{ inputs.build_mode }}
+          name: acode-rocdex-${{ inputs.app_type || 'paid' }}-${{ inputs.build_mode || 'dev' }}
           path: |
             platforms/android/app/build/outputs/apk/**/*.apk
             platforms/android/app/build/outputs/apk/**/*.aab
