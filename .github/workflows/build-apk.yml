@@ -20,11 +20,7 @@ on:
           - dev
           - prod
   push:
-    branches: [main, master]
-    paths:
-      - 'src/**'
-      - 'package.json'
-      - 'config.xml'
+    branches: [main]
 
 permissions:
   contents: write
@@ -37,8 +33,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
@@ -52,26 +46,30 @@ jobs:
           node-version: 'lts/*'
           cache: 'npm'
 
-      - name: Replace system Gradle with v8.11
-        run: |
-          # Download and install Gradle 8.11
-          curl -sL https://services.gradle.org/distributions/gradle-8.11-bin.zip -o /tmp/gradle.zip
-          unzip -q /tmp/gradle.zip -d /opt
-          # Replace the system Gradle 9.x with 8.11
-          rm -rf /usr/share/gradle-9.5.1
-          ln -sf /opt/gradle-8.11 /usr/share/gradle-9.5.1
-          gradle --version | head -2
-
       - name: Install Cordova CLI
         run: npm install -g cordova
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Setup Cordova Platform & Plugins (including Rocdex)
+      - name: Setup Cordova Platform & Plugins
         run: |
-          cordova platform add android@10 --no-telemetry || true
+          # Remove old platform if exists
+          rm -rf platforms/android
+          cordova platform add android@10 --no-telemetry
           node utils/setup.js || true
+
+      - name: Update Gradle wrapper to 8.11
+        run: |
+          # Update wrapper properties to use Gradle 8.11
+          echo "distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11-all.zip
+          networkTimeout=10000
+          validateDistributionUrl=true
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists" > platforms/android/gradle/wrapper/gradle-wrapper.properties
+          cat platforms/android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Build APK with Rocdex
         run: |

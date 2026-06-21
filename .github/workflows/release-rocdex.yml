@@ -52,31 +52,28 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 'lts/*'
-          cache: npm
-
-      - name: Enable Gradle Build Cache
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
-
-      - name: Replace system Gradle with v8.11
-        run: |
-          curl -sL https://services.gradle.org/distributions/gradle-8.11-bin.zip -o /tmp/gradle.zip
-          unzip -q /tmp/gradle.zip -d /opt
-          rm -rf /usr/share/gradle-9.5.1
-          ln -sf /opt/gradle-8.11 /usr/share/gradle-9.5.1
-          gradle --version | head -2
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Build web assets (with Rocdex)
-        run: npm run build
-        env:
-          NODE_ENV: ${{ github.event.inputs.build_type == 'release' && 'production' || 'development' }}
+      - name: Setup Cordova Platform & Plugins
+        run: |
+          rm -rf platforms/android
+          cordova platform add android@10 --no-telemetry
+          node utils/setup.js || true
 
-      - name: Setup Cordova & Plugins
-        run: node utils/setup.js
+      - name: Update Gradle wrapper to 8.11
+        run: |
+          echo 'distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https://services.gradle.org/distributions/gradle-8.11-all.zip
+networkTimeout=10000
+validateDistributionUrl=true
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists' > platforms/android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Build APK
 
       - name: Build APK
         run: |
@@ -84,7 +81,6 @@ jobs:
           sh utils/scripts/build.sh paid ${{ github.event.inputs.build_type || 'dev' }}
         env:
           TMPDIR: /tmp
-          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.jvmargs=-Xmx4g"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v7
