@@ -1,0 +1,3 @@
+## 2024-05-23 - Batching CodeMirror 6 StateEffects
+**Learning:** In Acode, which uses CodeMirror 6, multiple calls to `editor.dispatch` during file switching or settings updates cause redundant document measurement and update cycles. This is especially noticeable on mobile devices where CPU resources are limited.
+**Action:** Always prefer batching `StateEffect` objects into a single `editor.dispatch({ effects })` call when reconfiguring multiple compartments or applying multiple settings simultaneously. Refactored `applyOptions` and `applyCurrentEditorOptions` in `src/lib/editorManager.js` to support this pattern.
