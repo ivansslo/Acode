@@ -669,12 +669,12 @@ async function EditorManager($header, $body) {
 		];
 	}
 
-	function applyOptions(keys, targetEffects = null) {
+	function applyOptions(keys) {
 		const filter = keys ? new Set(keys) : null;
-		const effects = [];
 		for (const spec of cmOptionSpecs) {
 			if (filter && !spec.keys.some((k) => filter.has(k))) continue;
 			const built = spec.build();
+			const effects = [];
 			if (spec.compartments.length === 1) {
 				effects.push(spec.compartments[0].reconfigure(built));
 			} else {
@@ -685,11 +685,6 @@ async function EditorManager($header, $body) {
 					effects.push(comp.reconfigure(ext));
 				}
 			}
-		}
-
-		if (targetEffects) {
-			targetEffects.push(...effects);
-		} else if (effects.length > 0) {
 			editor.dispatch({ effects });
 		}
 	}
@@ -1022,16 +1017,11 @@ async function EditorManager($header, $body) {
 	};
 
 	// Set CodeMirror theme by id registered in our registry
-	editor.setTheme = function (themeId, targetEffects = null) {
+	editor.setTheme = function (themeId) {
 		try {
 			const id = String(themeId || "");
 			const ext = getThemeExtensions(id, [oneDark]);
-			const effect = themeCompartment.reconfigure(ext);
-			if (targetEffects) {
-				targetEffects.push(effect);
-			} else {
-				editor.dispatch({ effects: effect });
-			}
+			editor.dispatch({ effects: themeCompartment.reconfigure(ext) });
 			return true;
 		} catch (_) {
 			return false;
@@ -1425,20 +1415,18 @@ async function EditorManager($header, $body) {
 	function applyCurrentEditorOptions(file, { forceOptions = false } = {}) {
 		touchSelectionController?.onSessionChanged();
 		const optionsSignature = getEditorOptionsSignature();
-		const effects = [];
-
 		if (forceOptions || file.__cmOptionsSignature !== optionsSignature) {
 			const desiredTheme = appSettings?.value?.editorTheme;
-			if (desiredTheme) editor.setTheme(desiredTheme, effects);
-			applyOptions(null, effects);
+			if (desiredTheme) editor.setTheme(desiredTheme);
+			applyOptions();
 			file.__cmOptionsSignature = optionsSignature;
 		}
-
 		try {
 			const ro = !file.editable || !!file.loading;
-			effects.push(
-				readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
-			);
+			editor.dispatch({
+				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
+			});
+			file.session = editor.state;
 		} catch (error) {
 			warnRecoverable(
 				"Failed to apply read-only compartment update.",
@@ -1446,11 +1434,6 @@ async function EditorManager($header, $body) {
 				"readonly-reconfigure",
 			);
 		}
-
-		if (effects.length > 0) {
-			editor.dispatch({ effects });
-		}
-		file.session = editor.state;
 	}
 
 	function showLoadingEditor(file) {
