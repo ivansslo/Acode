@@ -669,12 +669,19 @@ async function EditorManager($header, $body) {
 		];
 	}
 
-	function applyOptions(keys) {
+	/**
+	 * Applies editor options based on the provided keys.
+	 * Optimization: Batches multiple CodeMirror state effects into a single dispatch
+	 * to avoid redundant view update cycles.
+	 * @param {string[]} [keys] - The keys of the options to apply.
+	 * @param {import("@codemirror/state").StateEffect<any>[]} [targetEffects] - Optional array to collect effects for external batching.
+	 */
+	function applyOptions(keys, targetEffects) {
 		const filter = keys ? new Set(keys) : null;
+		const effects = targetEffects || [];
 		for (const spec of cmOptionSpecs) {
 			if (filter && !spec.keys.some((k) => filter.has(k))) continue;
 			const built = spec.build();
-			const effects = [];
 			if (spec.compartments.length === 1) {
 				effects.push(spec.compartments[0].reconfigure(built));
 			} else {
@@ -685,6 +692,8 @@ async function EditorManager($header, $body) {
 					effects.push(comp.reconfigure(ext));
 				}
 			}
+		}
+		if (!targetEffects && effects.length) {
 			editor.dispatch({ effects });
 		}
 	}
@@ -1017,11 +1026,16 @@ async function EditorManager($header, $body) {
 	};
 
 	// Set CodeMirror theme by id registered in our registry
-	editor.setTheme = function (themeId) {
+	editor.setTheme = function (themeId, targetEffects) {
 		try {
 			const id = String(themeId || "");
 			const ext = getThemeExtensions(id, [oneDark]);
-			editor.dispatch({ effects: themeCompartment.reconfigure(ext) });
+			const effect = themeCompartment.reconfigure(ext);
+			if (targetEffects) {
+				targetEffects.push(effect);
+			} else {
+				editor.dispatch({ effects: effect });
+			}
 			return true;
 		} catch (_) {
 			return false;
@@ -1412,21 +1426,29 @@ async function EditorManager($header, $body) {
 		}, 80);
 	}
 
+	/**
+	 * Applies the current editor options and theme for the specified file.
+	 * Optimization: Combines theme, options, and read-only status updates into a single
+	 * editor dispatch, reducing re-renders from ~10+ to 1.
+	 * @param {EditorFile} file
+	 * @param {object} [options]
+	 * @param {boolean} [options.forceOptions]
+	 */
 	function applyCurrentEditorOptions(file, { forceOptions = false } = {}) {
 		touchSelectionController?.onSessionChanged();
 		const optionsSignature = getEditorOptionsSignature();
+		const effects = [];
 		if (forceOptions || file.__cmOptionsSignature !== optionsSignature) {
 			const desiredTheme = appSettings?.value?.editorTheme;
-			if (desiredTheme) editor.setTheme(desiredTheme);
-			applyOptions();
+			if (desiredTheme) editor.setTheme(desiredTheme, effects);
+			applyOptions(undefined, effects);
 			file.__cmOptionsSignature = optionsSignature;
 		}
 		try {
 			const ro = !file.editable || !!file.loading;
-			editor.dispatch({
-				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
-			});
-			file.session = editor.state;
+			effects.push(
+				readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
+			);
 		} catch (error) {
 			warnRecoverable(
 				"Failed to apply read-only compartment update.",
@@ -1434,6 +1456,11 @@ async function EditorManager($header, $body) {
 				"readonly-reconfigure",
 			);
 		}
+
+		if (effects.length) {
+			editor.dispatch({ effects });
+		}
+		file.session = editor.state;
 	}
 
 	function showLoadingEditor(file) {
