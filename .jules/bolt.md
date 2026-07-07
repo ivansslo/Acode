@@ -1,3 +1,0 @@
-## 2025-05-15 - [CodeMirror 6 Dispatch Batching]
-**Learning:** Sequential `editor.dispatch()` calls in CodeMirror 6 trigger multiple expensive view update cycles. Batching `StateEffect` objects into a single dispatch significantly improves performance during complex state transitions (e.g., file switching, configuration updates).
-**Action:** Always prefer `editor.dispatch({ effects: [eff1, eff2, ...] })` over multiple sequential `editor.dispatch({ effects: effN })` calls. Refactor utility methods (like `setTheme` or `applyOptions`) to support an optional `targetEffects` array to facilitate this pattern.
