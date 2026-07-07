@@ -669,12 +669,12 @@ async function EditorManager($header, $body) {
 		];
 	}
 
-	function applyOptions(keys) {
+	function applyOptions(keys, targetEffects = null) {
 		const filter = keys ? new Set(keys) : null;
+		const effects = targetEffects || [];
 		for (const spec of cmOptionSpecs) {
 			if (filter && !spec.keys.some((k) => filter.has(k))) continue;
 			const built = spec.build();
-			const effects = [];
 			if (spec.compartments.length === 1) {
 				effects.push(spec.compartments[0].reconfigure(built));
 			} else {
@@ -685,6 +685,8 @@ async function EditorManager($header, $body) {
 					effects.push(comp.reconfigure(ext));
 				}
 			}
+		}
+		if (!targetEffects && effects.length > 0) {
 			editor.dispatch({ effects });
 		}
 	}
@@ -1017,11 +1019,16 @@ async function EditorManager($header, $body) {
 	};
 
 	// Set CodeMirror theme by id registered in our registry
-	editor.setTheme = function (themeId) {
+	editor.setTheme = function (themeId, targetEffects = null) {
 		try {
 			const id = String(themeId || "");
 			const ext = getThemeExtensions(id, [oneDark]);
-			editor.dispatch({ effects: themeCompartment.reconfigure(ext) });
+			const effect = themeCompartment.reconfigure(ext);
+			if (targetEffects) {
+				targetEffects.push(effect);
+			} else {
+				editor.dispatch({ effects: effect });
+			}
 			return true;
 		} catch (_) {
 			return false;
@@ -1415,23 +1422,29 @@ async function EditorManager($header, $body) {
 	function applyCurrentEditorOptions(file, { forceOptions = false } = {}) {
 		touchSelectionController?.onSessionChanged();
 		const optionsSignature = getEditorOptionsSignature();
+		const effects = [];
 		if (forceOptions || file.__cmOptionsSignature !== optionsSignature) {
 			const desiredTheme = appSettings?.value?.editorTheme;
-			if (desiredTheme) editor.setTheme(desiredTheme);
-			applyOptions();
+			// Collect theme and editor options effects into a single transaction
+			if (desiredTheme) editor.setTheme(desiredTheme, effects);
+			applyOptions(null, effects);
 			file.__cmOptionsSignature = optionsSignature;
 		}
 		try {
 			const ro = !file.editable || !!file.loading;
-			editor.dispatch({
-				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
-			});
+			// Collect read-only status effect
+			effects.push(readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)));
+			// PERFORMANCE: Batching theme, options, and read-only changes into a single dispatch
+			// significantly reduces CodeMirror 6 view update cycles and overall main thread blocking.
+			if (effects.length > 0) {
+				editor.dispatch({ effects });
+			}
 			file.session = editor.state;
 		} catch (error) {
 			warnRecoverable(
-				"Failed to apply read-only compartment update.",
+				"Failed to apply editor options batch update.",
 				error,
-				"readonly-reconfigure",
+				"options-reconfigure",
 			);
 		}
 	}
