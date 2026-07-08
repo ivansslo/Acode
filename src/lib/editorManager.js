@@ -669,6 +669,12 @@ async function EditorManager($header, $body) {
 		];
 	}
 
+	/**
+	 * Applies editor options based on the provided keys.
+	 * Optimization: Batches multiple StateEffect objects to avoid redundant view update cycles.
+	 * @param {string[]} [keys] - The keys of the options to apply.
+	 * @param {import("@codemirror/state").StateEffect<any>[]} [targetEffects] - Optional array to accumulate effects for further batching.
+	 */
 	function applyOptions(keys, targetEffects) {
 		const filter = keys ? new Set(keys) : null;
 		const effects = targetEffects || [];
@@ -1019,6 +1025,11 @@ async function EditorManager($header, $body) {
 	};
 
 	// Set CodeMirror theme by id registered in our registry
+	/**
+	 * Sets the CodeMirror theme and optionally batches the effect.
+	 * @param {string} themeId - The ID of the theme to set.
+	 * @param {import("@codemirror/state").StateEffect<any>[]} [targetEffects] - Optional array to accumulate effects for batching.
+	 */
 	editor.setTheme = function (themeId, targetEffects) {
 		try {
 			const id = String(themeId || "");
@@ -1419,6 +1430,14 @@ async function EditorManager($header, $body) {
 		}, 80);
 	}
 
+	/**
+	 * Applies the current editor options for the specified file.
+	 * Optimization: Batches theme, options, and read-only state updates into a single transaction
+	 * to reduce CodeMirror view update cycles, improving performance during file switching.
+	 * @param {EditorFile} file - The file for which to apply options.
+	 * @param {object} [options] - Additional options.
+	 * @param {boolean} [options.forceOptions=false] - Whether to force re-application of options.
+	 */
 	function applyCurrentEditorOptions(file, { forceOptions = false } = {}) {
 		touchSelectionController?.onSessionChanged();
 		const optionsSignature = getEditorOptionsSignature();
@@ -1441,6 +1460,7 @@ async function EditorManager($header, $body) {
 				"readonly-reconfigure",
 			);
 		}
+		// Dispatch all accumulated effects in a single transaction
 		if (effects.length) {
 			editor.dispatch({ effects });
 		}
