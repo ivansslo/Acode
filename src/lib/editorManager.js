@@ -669,23 +669,28 @@ async function EditorManager($header, $body) {
 		];
 	}
 
-	function applyOptions(keys) {
+	function applyOptions(keys, targetEffects) {
 		const filter = keys ? new Set(keys) : null;
+		const collectedEffects = [];
 		for (const spec of cmOptionSpecs) {
 			if (filter && !spec.keys.some((k) => filter.has(k))) continue;
 			const built = spec.build();
-			const effects = [];
 			if (spec.compartments.length === 1) {
-				effects.push(spec.compartments[0].reconfigure(built));
+				collectedEffects.push(spec.compartments[0].reconfigure(built));
 			} else {
 				const arr = Array.isArray(built) ? built : [built];
 				for (let i = 0; i < spec.compartments.length; i++) {
 					const comp = spec.compartments[i];
 					const ext = arr[i] ?? [];
-					effects.push(comp.reconfigure(ext));
+					collectedEffects.push(comp.reconfigure(ext));
 				}
 			}
-			editor.dispatch({ effects });
+		}
+
+		if (targetEffects) {
+			targetEffects.push(...collectedEffects);
+		} else if (collectedEffects.length) {
+			editor.dispatch({ effects: collectedEffects });
 		}
 	}
 
@@ -1017,11 +1022,16 @@ async function EditorManager($header, $body) {
 	};
 
 	// Set CodeMirror theme by id registered in our registry
-	editor.setTheme = function (themeId) {
+	editor.setTheme = function (themeId, targetEffects) {
 		try {
 			const id = String(themeId || "");
 			const ext = getThemeExtensions(id, [oneDark]);
-			editor.dispatch({ effects: themeCompartment.reconfigure(ext) });
+			const effect = themeCompartment.reconfigure(ext);
+			if (targetEffects) {
+				targetEffects.push(effect);
+			} else {
+				editor.dispatch({ effects: effect });
+			}
 			return true;
 		} catch (_) {
 			return false;
@@ -1415,23 +1425,27 @@ async function EditorManager($header, $body) {
 	function applyCurrentEditorOptions(file, { forceOptions = false } = {}) {
 		touchSelectionController?.onSessionChanged();
 		const optionsSignature = getEditorOptionsSignature();
+		const effects = [];
+
 		if (forceOptions || file.__cmOptionsSignature !== optionsSignature) {
 			const desiredTheme = appSettings?.value?.editorTheme;
-			if (desiredTheme) editor.setTheme(desiredTheme);
-			applyOptions();
+			if (desiredTheme) editor.setTheme(desiredTheme, effects);
+			applyOptions(null, effects);
 			file.__cmOptionsSignature = optionsSignature;
 		}
+
 		try {
 			const ro = !file.editable || !!file.loading;
-			editor.dispatch({
-				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
-			});
+			effects.push(
+				readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
+			);
+			editor.dispatch({ effects });
 			file.session = editor.state;
 		} catch (error) {
 			warnRecoverable(
-				"Failed to apply read-only compartment update.",
+				"Failed to apply editor options batch update.",
 				error,
-				"readonly-reconfigure",
+				"apply-options-batch",
 			);
 		}
 	}
