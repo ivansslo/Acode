@@ -1,0 +1,3 @@
+## 2025-05-15 - Batching CodeMirror 6 StateEffects
+**Learning:** In CodeMirror 6, every `editor.dispatch` call triggers a view update cycle, which is expensive. When multiple changes (theme, options, read-only status) occur at once (e.g., during file switching), they should be batched into a single `dispatch({ effects })` to minimize re-renders and improve responsiveness. In this codebase, switching files was triggering up to 17 separate dispatches.
+**Action:** Always check if multiple `editor.dispatch` calls are being made sequentially and look for opportunities to consolidate them into a single transaction using `StateEffect` batching.
