@@ -669,12 +669,18 @@ async function EditorManager($header, $body) {
 		];
 	}
 
-	function applyOptions(keys) {
+	/**
+	 * Apply editor options based on the provided keys.
+	 * To optimize performance, multiple effects are batched into a single dispatch.
+	 * @param {string[]} [keys] - The keys of the options to apply.
+	 * @param {import("@codemirror/state").StateEffect<any>[]} [targetEffects] - Optional array to collect effects for batching.
+	 */
+	function applyOptions(keys, targetEffects) {
 		const filter = keys ? new Set(keys) : null;
+		const effects = targetEffects || [];
 		for (const spec of cmOptionSpecs) {
 			if (filter && !spec.keys.some((k) => filter.has(k))) continue;
 			const built = spec.build();
-			const effects = [];
 			if (spec.compartments.length === 1) {
 				effects.push(spec.compartments[0].reconfigure(built));
 			} else {
@@ -685,6 +691,9 @@ async function EditorManager($header, $body) {
 					effects.push(comp.reconfigure(ext));
 				}
 			}
+		}
+
+		if (!targetEffects && effects.length) {
 			editor.dispatch({ effects });
 		}
 	}
@@ -1016,12 +1025,23 @@ async function EditorManager($header, $body) {
 		}
 	};
 
-	// Set CodeMirror theme by id registered in our registry
-	editor.setTheme = function (themeId) {
+	/**
+	 * Set CodeMirror theme by id registered in our registry.
+	 * @param {string} themeId - The ID of the theme to set.
+	 * @param {import("@codemirror/state").StateEffect<any>[]} [targetEffects] - Optional array to collect effects for batching.
+	 * @returns {boolean} Success
+	 */
+	editor.setTheme = function (themeId, targetEffects) {
 		try {
 			const id = String(themeId || "");
 			const ext = getThemeExtensions(id, [oneDark]);
-			editor.dispatch({ effects: themeCompartment.reconfigure(ext) });
+			const effect = themeCompartment.reconfigure(ext);
+			if (targetEffects) {
+				// Optimization: Batch theme reconfiguration with other state effects
+				targetEffects.push(effect);
+			} else {
+				editor.dispatch({ effects: effect });
+			}
 			return true;
 		} catch (_) {
 			return false;
@@ -1414,26 +1434,33 @@ async function EditorManager($header, $body) {
 
 	function applyCurrentEditorOptions(file, { forceOptions = false } = {}) {
 		touchSelectionController?.onSessionChanged();
+		// Optimization: Batch theme, options, and read-only updates into a single dispatch
+		// to avoid redundant CodeMirror view update cycles.
+		const effects = [];
 		const optionsSignature = getEditorOptionsSignature();
 		if (forceOptions || file.__cmOptionsSignature !== optionsSignature) {
 			const desiredTheme = appSettings?.value?.editorTheme;
-			if (desiredTheme) editor.setTheme(desiredTheme);
-			applyOptions();
+			if (desiredTheme) editor.setTheme(desiredTheme, effects);
+			applyOptions(null, effects);
 			file.__cmOptionsSignature = optionsSignature;
 		}
 		try {
 			const ro = !file.editable || !!file.loading;
-			editor.dispatch({
-				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
-			});
-			file.session = editor.state;
+			effects.push(
+				readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
+			);
 		} catch (error) {
 			warnRecoverable(
-				"Failed to apply read-only compartment update.",
+				"Failed to collect read-only compartment update effect.",
 				error,
 				"readonly-reconfigure",
 			);
 		}
+
+		if (effects.length) {
+			editor.dispatch({ effects });
+		}
+		file.session = editor.state;
 	}
 
 	function showLoadingEditor(file) {
