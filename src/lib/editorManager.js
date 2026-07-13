@@ -689,7 +689,7 @@ async function EditorManager($header, $body) {
 
 		if (targetEffects) {
 			targetEffects.push(...effects);
-		} else if (effects.length > 0) {
+		} else {
 			editor.dispatch({ effects });
 		}
 	}
@@ -1437,9 +1437,7 @@ async function EditorManager($header, $body) {
 			effects.push(
 				readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
 			);
-			if (effects.length > 0) {
-				editor.dispatch({ effects });
-			}
+			editor.dispatch({ effects });
 			file.session = editor.state;
 		} catch (error) {
 			warnRecoverable(
@@ -1561,6 +1559,7 @@ async function EditorManager($header, $body) {
 			markLanguageReady(file, languageSignature, true);
 		}
 		editor.setState(state);
+		file.__cmOptionsSignature = getEditorOptionsSignature();
 		applyCurrentEditorOptions(file);
 
 		// Restore selection from previous state if available
