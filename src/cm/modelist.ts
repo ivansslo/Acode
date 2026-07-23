@@ -13,6 +13,7 @@ export interface ModesByName {
 
 const modesByName: ModesByName = {};
 const modes: Mode[] = [];
+let cachedSortedModes: Mode[] | null = null;
 
 function normalizeModeKey(value: string): string {
 	return String(value ?? "")
@@ -67,6 +68,7 @@ export function addMode(
 		}
 	});
 	modes.push(mode);
+	cachedSortedModes = null;
 }
 
 /**
@@ -89,6 +91,7 @@ export function removeMode(name: string): void {
 	);
 	if (modeIndex >= 0) {
 		modes.splice(modeIndex, 1);
+		cachedSortedModes = null;
 	}
 }
 
@@ -99,12 +102,14 @@ export function getModeForPath(path: string): Mode {
 	let mode = modesByName.text;
 	const fileName = path.split(/[/\\]/).pop() || "";
 
-	// Sort modes by specificity (descending) to check most specific first
-	const sortedModes = [...modes].sort((a, b) => {
-		return getModeSpecificityScore(b) - getModeSpecificityScore(a);
-	});
+	if (!cachedSortedModes) {
+		// Sort modes by specificity (descending) to check most specific first
+		cachedSortedModes = [...modes].sort((a, b) => {
+			return getModeSpecificityScore(b) - getModeSpecificityScore(a);
+		});
+	}
 
-	for (const iMode of sortedModes) {
+	for (const iMode of cachedSortedModes) {
 		if (iMode.supportsFile?.(fileName)) {
 			mode = iMode;
 			break;
@@ -119,7 +124,7 @@ export function getModeForPath(path: string): Mode {
  * - Anchored patterns (e.g., "^Dockerfile") get a base score of 1000.
  * - Non-anchored patterns (extensions) are scored by length.
  */
-function getModeSpecificityScore(modeInstance: Mode): number {
+function calculateSpecificityScore(modeInstance: Mode): number {
 	const extensionsStr = modeInstance.extensions;
 	let maxScore = 0;
 
@@ -150,6 +155,10 @@ function getModeSpecificityScore(modeInstance: Mode): number {
 	return maxScore;
 }
 
+function getModeSpecificityScore(modeInstance: Mode): number {
+	return modeInstance.specificityScore;
+}
+
 /**
  * Get all modes by name
  */
@@ -177,6 +186,7 @@ export class Mode {
 	extRe: RegExp | null;
 	filenameMatchers: RegExp[];
 	languageExtension: LanguageExtensionProvider | null;
+	specificityScore: number;
 
 	constructor(
 		name: string,
@@ -198,6 +208,7 @@ export class Mode {
 			? options.filenameMatchers.filter((matcher) => matcher instanceof RegExp)
 			: [];
 		this.languageExtension = languageExtension;
+		this.specificityScore = calculateSpecificityScore(this);
 		let re = "";
 
 		if (!extensions) {
