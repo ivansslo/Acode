@@ -1,3 +1,4 @@
+import escapeStringRegexp from "escape-string-regexp";
 import path from "./Path";
 
 function parseStorageList() {
@@ -91,29 +92,28 @@ export default {
 		try {
 			const storageList = parseStorageList();
 
-			let bestMatch = null;
-			let maxCharMatched = 0;
-
-			for (const storage of storageList) {
-				const storageUri = storage.uri ?? storage.url;
-				if (storageUri && url.startsWith(storageUri)) {
-					const charMatched = storageUri.length;
-					if (charMatched > maxCharMatched) {
-						maxCharMatched = charMatched;
-						bestMatch = { storage, storageUri };
-					}
-				}
+			const matches = [];
+			for (let storage of storageList) {
+				const regex = new RegExp(
+					"^" + escapeStringRegexp(storage.uri ?? storage.url),
+				);
+				matches.push({
+					regex,
+					charMatched: url.length - url.replace(regex, "").length,
+					storage,
+				});
 			}
 
-			if (bestMatch) {
-				const { storage, storageUri } = bestMatch;
+			const matched = matches.sort((a, b) => {
+				return b.charMatched - a.charMatched;
+			})[0];
+
+			if (matched) {
+				const { storage, regex } = matched;
 				const { name } = storage;
 				const [base, paths] = url.split("::");
 				url = base + "/" + paths.split("/").slice(1).join("/");
-				if (url.startsWith(storageUri)) {
-					url = name + url.slice(storageUri.length);
-				}
-				return url.replace(/\/+/g, "/");
+				return url.replace(regex, name).replace(/\/+/g, "/");
 			}
 
 			return url;
