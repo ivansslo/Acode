@@ -107,7 +107,8 @@ export default {
 				return null;
 			}
 		} else if (protocol) {
-			url = url.replace(new RegExp("^" + protocol), "");
+			// Optimized: Slice off protocol to avoid compiling and executing dynamic RegExp
+			url = url.slice(protocol.length);
 			pathnames[0] = url;
 			return protocol + path.join(...pathnames) + query;
 		} else {
@@ -123,7 +124,10 @@ export default {
 		let { url: uri, query } = this.parse(url);
 		url = uri;
 		const protocol = (this.PROTOCOL_PATTERN.exec(url) || [])[0] || "";
-		if (protocol) url = url.replace(new RegExp("^" + protocol), "");
+		if (protocol) {
+			// Optimized: Slice off protocol to avoid compiling and executing dynamic RegExp
+			url = url.slice(protocol.length);
+		}
 		const parts = url.split("/").map((part, i) => {
 			if (i === 0) return part;
 			return fixedEncodeURIComponent(part);
@@ -156,7 +160,10 @@ export default {
 				return null;
 			}
 		} else {
-			if (protocol) url = url.replace(new RegExp("^" + protocol), "");
+			if (protocol) {
+				// Optimized: Slice off protocol to avoid compiling and executing dynamic RegExp
+				url = url.slice(protocol.length);
+			}
 
 			if (protocol !== "file:///")
 				return "/" + url.split("/").slice(1).join("/");
@@ -294,7 +301,8 @@ export default {
 
 		if (pathname) {
 			pathname = decodeURIComponent(pathname);
-			pathname = pathname.replace(new RegExp(uuid, "g"), "#");
+			// Optimized: Use split & join to avoid compiling and executing dynamic RegExp
+			pathname = pathname.split(uuid).join("#");
 		}
 
 		if (username) {

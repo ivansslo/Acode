@@ -30,7 +30,10 @@ export default {
 		const last = ar.slice(-1)[0];
 		if (!last) return ar.slice(-2)[0];
 		let res = decodeURI(last.split("?")[0] || "");
-		if (this.extname(res) === ext) res = res.replace(new RegExp(ext + "$"), "");
+		if (ext && this.extname(res) === ext) {
+			// Optimized: Slice off the extension to avoid compiling and executing dynamic RegExp
+			res = res.slice(0, -ext.length);
+		}
 		return res;
 	},
 
