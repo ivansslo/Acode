@@ -94,14 +94,15 @@ export default {
 
 			const matches = [];
 			for (let storage of storageList) {
-				const regex = new RegExp(
-					"^" + escapeStringRegexp(storage.uri ?? storage.url),
-				);
-				matches.push({
-					regex,
-					charMatched: url.length - url.replace(regex, "").length,
-					storage,
-				});
+				const storageUrl = storage.uri ?? storage.url;
+				// Optimized: Use startsWith instead of compiling and executing dynamic RegExp in a loop
+				if (storageUrl && url.startsWith(storageUrl)) {
+					matches.push({
+						charMatched: storageUrl.length,
+						storageUrl,
+						storage,
+					});
+				}
 			}
 
 			const matched = matches.sort((a, b) => {
@@ -109,11 +110,14 @@ export default {
 			})[0];
 
 			if (matched) {
-				const { storage, regex } = matched;
+				const { storage, storageUrl } = matched;
 				const { name } = storage;
 				const [base, paths] = url.split("::");
 				url = base + "/" + paths.split("/").slice(1).join("/");
-				return url.replace(regex, name).replace(/\/+/g, "/");
+				if (url.startsWith(storageUrl)) {
+					url = name + url.slice(storageUrl.length);
+				}
+				return url.replace(/\/+/g, "/");
 			}
 
 			return url;
