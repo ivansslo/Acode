@@ -13,7 +13,6 @@ export interface ModesByName {
 
 const modesByName: ModesByName = {};
 const modes: Mode[] = [];
-let cachedSortedModes: Mode[] | null = null;
 
 function normalizeModeKey(value: string): string {
 	return String(value ?? "")
@@ -68,7 +67,6 @@ export function addMode(
 		}
 	});
 	modes.push(mode);
-	cachedSortedModes = null;
 }
 
 /**
@@ -91,7 +89,6 @@ export function removeMode(name: string): void {
 	);
 	if (modeIndex >= 0) {
 		modes.splice(modeIndex, 1);
-		cachedSortedModes = null;
 	}
 }
 
@@ -102,13 +99,12 @@ export function getModeForPath(path: string): Mode {
 	let mode = modesByName.text;
 	const fileName = path.split(/[/\\]/).pop() || "";
 
-	if (!cachedSortedModes) {
-		cachedSortedModes = [...modes].sort((a, b) => {
-			return b.specificityScore - a.specificityScore;
-		});
-	}
+	// Sort modes by specificity (descending) to check most specific first
+	const sortedModes = [...modes].sort((a, b) => {
+		return getModeSpecificityScore(b) - getModeSpecificityScore(a);
+	});
 
-	for (const iMode of cachedSortedModes) {
+	for (const iMode of sortedModes) {
 		if (iMode.supportsFile?.(fileName)) {
 			mode = iMode;
 			break;
@@ -181,7 +177,6 @@ export class Mode {
 	extRe: RegExp | null;
 	filenameMatchers: RegExp[];
 	languageExtension: LanguageExtensionProvider | null;
-	specificityScore: number;
 
 	constructor(
 		name: string,
@@ -207,7 +202,6 @@ export class Mode {
 
 		if (!extensions) {
 			this.extRe = null;
-			this.specificityScore = getModeSpecificityScore(this);
 			return;
 		}
 
@@ -231,14 +225,12 @@ export class Mode {
 
 		if (!regexParts.length) {
 			this.extRe = null;
-			this.specificityScore = getModeSpecificityScore(this);
 			return;
 		}
 
 		re =
 			regexParts.length === 1 ? regexParts[0] : `(?:${regexParts.join("|")})`;
 		this.extRe = new RegExp(re, "i");
-		this.specificityScore = getModeSpecificityScore(this);
 	}
 
 	supportsFile(filename: string): boolean {
