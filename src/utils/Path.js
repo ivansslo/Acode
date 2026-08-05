@@ -43,9 +43,13 @@ export default {
 	 * @param {string} path
 	 */
 	extname(path) {
-		const filename = path.split("/").slice(-1)[0];
-		if (/.+\..*$/.test(filename)) {
-			return /(?:\.([^.]*))?$/.exec(filename)[0] || "";
+		// Optimized: Avoid array split/slice allocation and RegExp compilation.
+		// Uses faster path.lastIndexOf('/') and string slice, then performs a native dot index check.
+		const lastSlash = path.lastIndexOf("/");
+		const filename = lastSlash === -1 ? path : path.slice(lastSlash + 1);
+		const dotIndex = filename.lastIndexOf(".");
+		if (dotIndex > 0) {
+			return filename.slice(dotIndex);
 		}
 
 		return "";
