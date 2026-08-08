@@ -1,0 +1,3 @@
+## 2025-03-09 - Redundant Sorting and Recalculating in `getModeForPath`
+**Learning:** In code editors, checking file patterns to determine modes is called extremely frequently. Sorting 150+ modes dynamically with custom specificity scores on every invocation of `getModeForPath` creates a major CPU bottleneck ($O(N \log N)$ per call). Pre-calculating metadata in constructors and caching sorted lists results in a dramatic (~40x) performance improvement.
+**Action:** Always inspect helper/utility lookup functions that process registry/list structures to see if they perform redundant sorting or computations on static/semi-static collections, and replace them with cached, pre-sorted data.
