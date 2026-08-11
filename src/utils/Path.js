@@ -43,11 +43,13 @@ export default {
 	 * @param {string} path
 	 */
 	extname(path) {
-		const filename = path.split("/").slice(-1)[0];
-		if (/.+\..*$/.test(filename)) {
-			return /(?:\.([^.]*))?$/.exec(filename)[0] || "";
+		// Avoid dynamic regex and split/slice arrays by using high-performance native string operations
+		const lastSlash = path.lastIndexOf("/");
+		const filename = lastSlash === -1 ? path : path.slice(lastSlash + 1);
+		const dotIndex = filename.lastIndexOf(".");
+		if (dotIndex > 0) {
+			return filename.slice(dotIndex);
 		}
-
 		return "";
 	},
 
