@@ -1,0 +1,3 @@
+## 2025-02-18 - Canvas-Based Color Chip Parsing Bottleneck in Viewport Loops
+**Learning:** Instantiating and using canvas-based parsing via `getImageData` on every single color rendering viewport pass in CodeMirror 6 results in severe rendering flushes and CPU-GPU pipeline synchronization overhead. Since color-chips render repeatedly during scrolling or editing, this canvas-backed overhead blocks the main thread.
+**Action:** Replace canvas-based color parsing with standard JS-native parsing (Hex, RGB/RGBA, HSL/HSLA, named colors, transparent) and use a bounded Map cache (e.g. 1000 entries) to dramatically improve viewport scrolling frames-per-second, while safely falling back to canvas parsing for unrecognized or complex colors.
