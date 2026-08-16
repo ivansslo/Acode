@@ -37,6 +37,12 @@ const keys = {
 	46: "Delete",
 };
 
+// Optimization: Pre-compute reverse mapping for O(1) key-to-keyCode lookups
+const reverseKeys = {};
+for (const code in keys) {
+	reverseKeys[keys[code]] = Number(code);
+}
+
 const initKeyboardEventType = (function (event) {
 	try {
 		event.initKeyboardEvent(
@@ -127,8 +133,9 @@ export default function KeyboardEvent(type, dict) {
 		if (!key) key = String.fromCharCode(dict.keyCode || dict.which);
 		dict.key = key;
 	} else if (dict.key && !dict.which && !dict.keyCode) {
-		let keyCode = Object.keys(keys).find((key) => keys[key] === dict.key);
-		if (!keyCode) keyCode = dict.key.charCodeAt(0);
+		// Optimization: O(1) constant time lookup instead of O(N) array iteration with Object.keys().find()
+		let keyCode = reverseKeys[dict.key];
+		if (keyCode === undefined) keyCode = dict.key.charCodeAt(0);
 		dict.keyCode = keyCode;
 		dict.which = keyCode;
 	}
