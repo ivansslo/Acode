@@ -37,6 +37,12 @@ const keys = {
 	46: "Delete",
 };
 
+// Optimization: Pre-compute reverse mapping for O(1) key-to-keyCode lookups
+const reverseKeys = {};
+for (const code in keys) {
+	reverseKeys[keys[code]] = Number(code);
+}
+
 const initKeyboardEventType = (function (event) {
 	try {
 		event.initKeyboardEvent(
@@ -61,13 +67,13 @@ const initKeyboardEventType = (function (event) {
 					? event.altKey
 						? // webkit
 							1
-						: 3
+							: 3
 					: event.shiftKey
 						? 2
 						: // webkit
 							4)) || // IE9
 			9
-		); // FireFox|w3c
+		);
 	} catch (error) {
 		initKeyboardEventType = 0;
 	}
@@ -110,7 +116,7 @@ const ObjectDefineProperty =
  * @param {KeyEvent} dict
  * @returns
  */
-export default function KeyboardEvent(type, dict) {
+export default function KeyboardEvent(type, dict = {}) {
 	let event;
 
 	if (initKeyboardEventType) {
@@ -127,8 +133,9 @@ export default function KeyboardEvent(type, dict) {
 		if (!key) key = String.fromCharCode(dict.keyCode || dict.which);
 		dict.key = key;
 	} else if (dict.key && !dict.which && !dict.keyCode) {
-		let keyCode = Object.keys(keys).find((key) => keys[key] === dict.key);
-		if (!keyCode) keyCode = dict.key.charCodeAt(0);
+		// Optimization: O(1) constant time lookup instead of O(N) array iteration with Object.keys().find()
+		let keyCode = reverseKeys[dict.key];
+		if (keyCode === undefined) keyCode = dict.key.charCodeAt(0);
 		dict.keyCode = keyCode;
 		dict.which = keyCode;
 	}
@@ -148,12 +155,12 @@ export default function KeyboardEvent(type, dict) {
 	const modifiersListArg =
 		initKeyboardEventType > 3
 			? (
-					(ctrlKey ? "Control" : "") +
-					(shiftKey ? " Shift" : "") +
-					(altKey ? " Alt" : "") +
-					(metaKey ? " Meta" : "") +
-					(altGraphKey ? " AltGraph" : "")
-				).trim()
+				(ctrlKey ? "Control" : "") +
+				(shiftKey ? " Shift" : "") +
+				(altKey ? " Alt" : "") +
+				(metaKey ? " Meta" : "") +
+				(altGraphKey ? " AltGraph" : "")
+			).trim()
 			: null;
 
 	const key = localDict["key"] + "";
@@ -161,10 +168,10 @@ export default function KeyboardEvent(type, dict) {
 	const location = localDict["location"];
 	const keyCode =
 		localDict["keyCode"] ||
-		(localDict["keyCode"] = (key && key.charCodeAt(0)) || 0);
+			(localDict["keyCode"] = (key && key.charCodeAt(0)) || 0);
 	const charCode =
 		localDict["charCode"] ||
-		(localDict["charCode"] = (char && char.charCodeAt(0)) || 0);
+			(localDict["charCode"] = (char && char.charCodeAt(0)) || 0);
 	const bubbles = localDict["bubbles"];
 	const cancelable = localDict["cancelable"];
 	const repeat = localDict["repeat"];
