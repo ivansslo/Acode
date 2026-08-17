@@ -2,27 +2,6 @@ import alert from "dialogs/alert";
 import settings from "lib/settings";
 
 let encodings = {};
-const encodingMap = new Map();
-let lastEncodingsCount = 0;
-
-/**
- * Rebuilds the O(1) encoding lookup map from the `encodings` dictionary.
- */
-function buildEncodingCache() {
-	encodingMap.clear();
-	const keys = Object.keys(encodings);
-	for (const key of keys) {
-		const encoding = encodings[key];
-		if (!encoding) continue;
-		encodingMap.set(key.toLowerCase(), encoding);
-		if (Array.isArray(encoding.aliases)) {
-			for (const alias of encoding.aliases) {
-				encodingMap.set(alias.toLowerCase(), encoding);
-			}
-		}
-	}
-	lastEncodingsCount = keys.length;
-}
 
 /**
  * @typedef {Object} Encoding
@@ -37,19 +16,25 @@ function buildEncodingCache() {
  * @returns {Encoding|undefined}
  */
 export function getEncoding(charset) {
-	if (!charset || typeof charset !== "string") {
-		charset = "";
-	}
 	charset = charset.toLowerCase();
 
-	const keysCount = Object.keys(encodings).length;
-	if (encodingMap.size === 0 || keysCount !== lastEncodingsCount) {
-		buildEncodingCache();
-	}
+	const found = Object.keys(encodings).find((key) => {
+		if (key.toLowerCase() === charset) {
+			return true;
+		}
 
-	const found = encodingMap.get(charset);
+		const alias = encodings[key].aliases.find(
+			(alias) => alias.toLowerCase() === charset,
+		);
+		if (alias) {
+			return true;
+		}
+
+		return false;
+	});
+
 	if (found) {
-		return found;
+		return encodings[found];
 	}
 
 	return encodings["UTF-8"];
@@ -221,7 +206,6 @@ export async function initEncodings() {
 					const encoding = map[key];
 					encodings[key] = encoding;
 				});
-				buildEncodingCache();
 				resolve();
 			},
 			(error) => {
