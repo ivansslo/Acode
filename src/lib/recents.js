@@ -1,5 +1,4 @@
 import select from "dialogs/select";
-import escapeStringRegexp from "escape-string-regexp";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
@@ -53,15 +52,17 @@ const recents = {
 
 	removeFolder(url) {
 		({ url } = Url.parse(url));
+		// Optimize: Use native string `startsWith` instead of dynamic RegExp construction
 		this.folders = this.folders.filter((folder) => {
-			return !new RegExp("^" + escapeStringRegexp(folder.url)).test(url);
+			return !url.startsWith(folder.url);
 		});
 	},
 
 	removeFile(url) {
 		({ url } = Url.parse(url));
+		// Optimize: Use native string `startsWith` instead of dynamic RegExp construction
 		this.files = this.files.filter((file) => {
-			return !new RegExp("^" + escapeStringRegexp(url)).test(file);
+			return !file.startsWith(url);
 		});
 	},
 
