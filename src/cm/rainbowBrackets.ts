@@ -104,15 +104,22 @@ function isOpeningBracket(char: string): boolean {
 	return char === "(" || char === "[" || char === "{";
 }
 
+// Cache for isSkipContext to avoid repeated lowercasing and substring matching across AST nodes
+const skipContextCache = new Map<string, boolean>();
+
 function isSkipContext(name: string): boolean {
+	let cached = skipContextCache.get(name);
+	if (cached !== undefined) return cached;
+
 	const lower = name.toLowerCase();
-	return (
+	cached =
 		lower.includes("string") ||
 		lower.includes("comment") ||
 		lower.includes("regexp") ||
 		lower.includes("regex") ||
-		lower.includes("regular")
-	);
+		lower.includes("regular");
+	skipContextCache.set(name, cached);
+	return cached;
 }
 
 function buildTheme(colors: readonly string[]) {
