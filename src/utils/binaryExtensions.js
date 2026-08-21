@@ -323,30 +323,66 @@ const binaryMimeTypes = new Set([
 	"application/zstd",
 ]);
 
-export function isBinaryFile(file) {
-	if (typeof file === "string") return isBinaryPath(file);
-	if (!file) return false;
+/**
+ * Fast allocation-free extraction of filename/basename from path, URI, or URL string.
+ * Strips query parameters and hash components while avoiding RegExp overhead and array allocations.
+ * @param {string|object} file
+ * @returns {string} Lowercase basename
+ */
+function getBasename(file) {
+	if (!file) return "";
+	const str = String(file);
 
-	const mime = file.mime || file.type;
-	if (isTextMime(mime)) return false;
-	if (isTextPath(file.url || file.path || file.name)) return false;
-	if (isBinaryMime(mime)) return true;
+	let end = str.length;
+	const qIndex = str.indexOf("?");
+	if (qIndex !== -1) end = qIndex;
+	const hIndex = str.indexOf("#");
+	if (hIndex !== -1 && hIndex < end) end = hIndex;
 
-	return isBinaryPath(file.url || file.path || file.name);
+	let lastSlash = -1;
+	for (let i = end - 1; i >= 0; i--) {
+		const ch = str.charCodeAt(i);
+		if (ch === 47 || ch === 92) {
+			// '/' (47) or '\' (92)
+			lastSlash = i;
+			break;
+		}
+	}
+
+	return str.slice(lastSlash + 1, end).toLowerCase();
 }
 
-export function isTextPath(file) {
-	const path = String(file ?? "").split(/[?#]/)[0];
-	const basename = path.split(/[\\/]/).pop()?.toLowerCase() || "";
+/**
+ * Normalizes MIME type string without array allocation from .split(';')
+ * @param {string} mime
+ * @returns {string}
+ */
+function normalizeMime(mime) {
+	if (!mime || typeof mime !== "string") return "";
+	const semi = mime.indexOf(";");
+	const base = semi === -1 ? mime : mime.slice(0, semi);
+	return base.trim().toLowerCase();
+}
+
+/**
+ * Checks if extracted lowercased basename has a text extension.
+ * @param {string} basename
+ * @returns {boolean}
+ */
+function checkTextBasename(basename) {
+	if (!basename) return false;
 	const lastDot = basename.lastIndexOf(".");
 	if (lastDot === -1) return false;
 	return textExtensionSet.has(basename.slice(lastDot + 1));
 }
 
-export function isBinaryPath(file) {
-	const path = String(file ?? "").split(/[?#]/)[0];
-	const basename = path.split(/[\\/]/).pop()?.toLowerCase() || "";
-
+/**
+ * Checks if extracted lowercased basename has a binary extension.
+ * @param {string} basename
+ * @returns {boolean}
+ */
+function checkBinaryBasename(basename) {
+	if (!basename) return false;
 	const lastDot = basename.lastIndexOf(".");
 	if (lastDot === -1) return false;
 
@@ -360,6 +396,58 @@ export function isBinaryPath(file) {
 	return binaryExtensionSet.has(compoundExtension);
 }
 
+/**
+ * Determines whether a file path or object represents a binary file.
+ * Preserves exact original evaluation hierarchy (Text MIME -> Text Path -> Binary MIME -> Binary Path).
+ * @param {string|object} file
+ * @returns {boolean}
+ */
+export function isBinaryFile(file) {
+	if (typeof file === "string") return isBinaryPath(file);
+	if (!file) return false;
+
+	const mime = normalizeMime(file.mime || file.type);
+	if (mime && (textMimeTypes.has(mime) || mime.startsWith("text/"))) {
+		return false;
+	}
+
+	const basename = getBasename(file.url || file.path || file.name);
+	if (checkTextBasename(basename)) return false;
+
+	if (
+		mime &&
+		(binaryMimeTypes.has(mime) ||
+			binaryMimePrefixes.some((prefix) => mime.startsWith(prefix)))
+	) {
+		return true;
+	}
+
+	return checkBinaryBasename(basename);
+}
+
+/**
+ * Checks if file path has a text extension.
+ * @param {string|object} file
+ * @returns {boolean}
+ */
+export function isTextPath(file) {
+	return checkTextBasename(getBasename(file));
+}
+
+/**
+ * Checks if file path has a binary extension.
+ * @param {string|object} file
+ * @returns {boolean}
+ */
+export function isBinaryPath(file) {
+	return checkBinaryBasename(getBasename(file));
+}
+
+/**
+ * Checks if MIME type indicates a binary format.
+ * @param {string} mime
+ * @returns {boolean}
+ */
 export function isBinaryMime(mime) {
 	const normalized = normalizeMime(mime);
 	if (!normalized || isTextMime(normalized)) return false;
@@ -374,9 +462,4 @@ function isTextMime(mime) {
 	if (textMimeTypes.has(normalized)) return true;
 
 	return normalized.startsWith("text/");
-}
-
-function normalizeMime(mime) {
-	if (!mime || typeof mime !== "string") return "";
-	return mime.split(";")[0].trim().toLowerCase();
 }
