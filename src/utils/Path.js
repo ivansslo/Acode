@@ -6,14 +6,24 @@ export default {
 	 * @param {string} path
 	 * @returns {string}
 	 */
+	// Performance optimization: Uses native string operations (lastIndexOf, slice, indexOf)
+	// instead of expensive .split('/'), array slicing, regex matching, unshift, and join('/').
 	dirname(path) {
 		if (path.endsWith("/")) path = path.slice(0, -1);
-		const parts = path.split("/").slice(0, -1);
-		if (!/^(\.|\.\.|)$/.test(parts[0])) parts.unshift(".");
-		const res = parts.join("/");
+		const lastIdx = path.lastIndexOf("/");
+		if (lastIdx === -1) return ".";
+		if (lastIdx === 0) return "/";
 
-		if (!res) return "/";
-		else return res;
+		const dir = path.slice(0, lastIdx);
+		const firstSlash = dir.indexOf("/");
+		if (firstSlash === -1) {
+			if (dir === "." || dir === "..") return dir;
+			return "./" + dir;
+		}
+		if (firstSlash === 0) return dir;
+		const seg0 = dir.slice(0, firstSlash);
+		if (seg0 === "." || seg0 === "..") return dir;
+		return "./" + dir;
 	},
 
 	/**
@@ -23,14 +33,21 @@ export default {
 	 * @param {string} path
 	 * @returns {string}
 	 */
+	// Performance optimization: Uses fast string slicing and indexing to locate the basename and
+	// avoids dynamic RegExp compilation (new RegExp(ext + "$")) and array allocations from .split('/').
 	basename(path, ext = "") {
 		ext = ext || "";
 		if (path === "" || path === "/") return path;
-		const ar = path.split("/");
-		const last = ar.slice(-1)[0];
-		if (!last) return ar.slice(-2)[0];
-		let res = decodeURI(last.split("?")[0] || "");
-		if (this.extname(res) === ext) res = res.replace(new RegExp(ext + "$"), "");
+		if (path.endsWith("/")) path = path.slice(0, -1);
+		const idx = path.lastIndexOf("/");
+		let last = idx === -1 ? path : path.slice(idx + 1);
+		const qIdx = last.indexOf("?");
+		if (qIdx !== -1) last = last.slice(0, qIdx);
+
+		let res = last.includes("%") ? decodeURI(last) : last;
+		if (ext && this.extname(res) === ext && res.endsWith(ext)) {
+			res = res.slice(0, -ext.length);
+		}
 		return res;
 	},
 
@@ -42,12 +59,15 @@ export default {
 	 * empty string is returned.
 	 * @param {string} path
 	 */
+	// Performance optimization: Extracts filename via lastIndexOf('/') and finds dot position
+	// via lastIndexOf('.'), avoiding expensive regular expression testing and array splitting.
 	extname(path) {
-		const filename = path.split("/").slice(-1)[0];
-		if (/.+\..*$/.test(filename)) {
-			return /(?:\.([^.]*))?$/.exec(filename)[0] || "";
+		const slashIdx = path.lastIndexOf("/");
+		const filename = slashIdx === -1 ? path : path.slice(slashIdx + 1);
+		const dotIdx = filename.lastIndexOf(".");
+		if (dotIdx > 0) {
+			return filename.slice(dotIdx);
 		}
-
 		return "";
 	},
 
