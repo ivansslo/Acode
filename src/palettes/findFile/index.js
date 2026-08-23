@@ -27,6 +27,10 @@ export default async function findFile() {
 	async function generateHints(hints) {
 		hintsModification = hints;
 		const list = [];
+		// Cache recents into a Set for O(1) lookups and avoid repeated localStorage & JSON.parse calls per file
+		const recentSet = new Set(recents.files);
+		const createItem = (name, path, url) =>
+			hintItem(name, path, url, recentSet);
 
 		editorManager.files.forEach((file) => {
 			const { uri, name } = file;
@@ -36,10 +40,10 @@ export default async function findFile() {
 				location = helpers.getVirtualPath(location);
 			}
 
-			list.push(hintItem(name, location, uri));
+			list.push(createItem(name, location, uri));
 		});
 
-		list.push(...files(hintItem));
+		list.push(...files(createItem));
 		return list;
 	}
 
@@ -56,11 +60,11 @@ export default async function findFile() {
  * @param {string} url Hint value
  * @returns {{text: string, value: string}}
  */
-function hintItem(name, path, url) {
+function hintItem(name, path, url, recentSet) {
 	if (typeof name === "object") {
 		({ name, path, url } = name);
 	}
-	const recent = recents.files.find((file) => file === url);
+	const recent = recentSet ? recentSet.has(url) : recents.files.includes(url);
 	let subText = (path || url) ?? strings["new file"];
 	if (subText.length > 50) {
 		subText = `...${subText.slice(-50)}`;
