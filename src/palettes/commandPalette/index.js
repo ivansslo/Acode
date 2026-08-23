@@ -13,6 +13,8 @@ export default async function commandPalette() {
 
 	function generateHints() {
 		const registeredCommands = getRegisteredCommands();
+		// Cache recently used commands in a Set for O(1) lookup and avoid repeated localStorage/JSON parsing inside loop
+		const recentSet = new Set(recentCommands.commands);
 		const hints = [];
 
 		registeredCommands.forEach(({ name, description, key }) => {
@@ -21,7 +23,7 @@ export default async function commandPalette() {
 				value: name,
 				text: `<span ${recentlyUsed ? `data-str='${strings["recently used"]}'` : ""}>${description ?? name}</span><small>${keyLabel}</small>`,
 			});
-			if (recentCommands.commands.includes(name)) {
+			if (recentSet.has(name)) {
 				hints.unshift(item(true));
 				return;
 			}
