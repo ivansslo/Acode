@@ -52,14 +52,21 @@ class SearchHistory {
 
 		const trimmedItem = item.trim();
 
+		// Performance optimization: skip operation if item is already at the top of history
+		if (this.history[0] === trimmedItem) {
+			return;
+		}
+
 		// Remove existing item if present
 		this.history = this.history.filter((h) => h !== trimmedItem);
 
 		// Add to beginning
 		this.history.unshift(trimmedItem);
 
-		// Limit history size
-		this.history = this.history.slice(0, MAX_HISTORY_ITEMS);
+		// Limit history size in-place to avoid array re-allocation
+		if (this.history.length > MAX_HISTORY_ITEMS) {
+			this.history.length = MAX_HISTORY_ITEMS;
+		}
 
 		this.saveHistory();
 	}
