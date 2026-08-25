@@ -15,12 +15,24 @@ export function sanitize(text) {
 	return DOMPurify.sanitize(text, { ALLOWED_TAGS: [] });
 }
 
+// Pre-computed HTML escape map and single regex pattern for fast token escaping
+const HTML_ESCAPE_MAP = {
+	"&": "&amp;",
+	"<": "&lt;",
+	">": "&gt;",
+	'"': "&quot;",
+};
+const HTML_ESCAPE_REGEX = /[&<">]/g;
+
+/**
+ * High-performance HTML escaper. Performs a fast test pass to bypass string allocations
+ * and multi-pass regex replacements for plain code tokens.
+ * @param {string} text
+ * @returns {string}
+ */
 function escapeHtml(text) {
-	return text
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;");
+	if (!/[&<">]/.test(text)) return text;
+	return text.replace(HTML_ESCAPE_REGEX, (ch) => HTML_ESCAPE_MAP[ch]);
 }
 
 function escapeRegExp(string) {
