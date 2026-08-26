@@ -2,6 +2,8 @@ import URLParse from "url-parse";
 import path from "./Path";
 import Uri from "./Uri";
 
+const PROTOCOL_SCHEME_PATTERN = /^([a-z]+:)\/\/\/?/i;
+
 export default {
 	/**
 	 * Returns basename from a url eg. 'index.html' from 'ftp://localhost/foo/bar/index.html'
@@ -18,14 +20,19 @@ export default {
 				if (isFileUri) return this.basename(rootUri);
 
 				if (docId.endsWith("/")) docId = docId.slice(0, -1);
-				docId = docId.split(":").pop();
-				return this.pathname(docId).split("/").pop();
+				const colonIdx = docId.lastIndexOf(":");
+				docId = colonIdx === -1 ? docId : docId.slice(colonIdx + 1);
+				const pName = this.pathname(docId);
+				const lastSlash = pName.lastIndexOf("/");
+				return lastSlash === -1 ? pName : pName.slice(lastSlash + 1);
 			} catch (error) {
 				return null;
 			}
 		} else {
 			if (url.endsWith("/")) url = url.slice(0, -1);
-			return this.pathname(url).split("/").pop();
+			const pName = this.pathname(url);
+			const lastSlash = pName.lastIndexOf("/");
+			return lastSlash === -1 ? pName : pName.slice(lastSlash + 1);
 		}
 	},
 
@@ -107,7 +114,9 @@ export default {
 				return null;
 			}
 		} else if (protocol) {
-			url = url.replace(new RegExp("^" + protocol), "");
+			// Performance optimization: Avoid expensive dynamic RegExp creation `new RegExp("^" + protocol)`.
+			// Since protocol matches at string position 0, slice(protocol.length) strips it directly.
+			url = url.slice(protocol.length);
 			pathnames[0] = url;
 			return protocol + path.join(...pathnames) + query;
 		} else {
@@ -123,7 +132,8 @@ export default {
 		let { url: uri, query } = this.parse(url);
 		url = uri;
 		const protocol = (this.PROTOCOL_PATTERN.exec(url) || [])[0] || "";
-		if (protocol) url = url.replace(new RegExp("^" + protocol), "");
+		// Performance optimization: Replace `new RegExp("^" + protocol)` with direct slice.
+		if (protocol) url = url.slice(protocol.length);
 		const parts = url.split("/").map((part, i) => {
 			if (i === 0) return part;
 			return fixedEncodeURIComponent(part);
@@ -144,29 +154,40 @@ export default {
 	pathname(url) {
 		if (typeof url !== "string" || !this.PROTOCOL_PATTERN.test(url)) return url;
 
-		url = url.split("?")[0];
+		// Performance optimization: Avoid RegExp split for query string extraction.
+		const qIndex = url.indexOf("?");
+		if (qIndex !== -1) url = url.slice(0, qIndex);
+
 		const protocol = (this.PROTOCOL_PATTERN.exec(url) || [])[0] || "";
 
 		if (protocol === "content://") {
 			try {
 				const { rootUri, docId, isFileUri } = Uri.parse(url);
 				if (isFileUri) return this.pathname(rootUri);
-				else return "/" + (docId.split(":")[1] || docId);
+				else {
+					const colonIdx = docId.indexOf(":");
+					const p = colonIdx !== -1 ? docId.slice(colonIdx + 1) : docId;
+					return "/" + p;
+				}
 			} catch (error) {
 				return null;
 			}
 		} else {
-			if (protocol) url = url.replace(new RegExp("^" + protocol), "");
+			// Performance optimization: Replace dynamic RegExp with string slicing.
+			if (protocol) url = url.slice(protocol.length);
 
-			if (protocol !== "file:///")
-				return "/" + url.split("/").slice(1).join("/");
+			if (protocol !== "file:///") {
+				// Performance optimization: Replace split("/").slice(1).join("/") with fast string indexing.
+				const slashIdx = url.indexOf("/");
+				return slashIdx === -1 ? "/" : url.slice(slashIdx);
+			}
 
 			return "/" + url;
 		}
 	},
 
 	/**
-	 * Returns dirname from url eg. 'ftp://localhost/foo/'  from 'ftp://localhost/foo/bar'
+	 * Returns dirname from url eg. 'ftp://localhost/foo/' from 'ftp://localhost/foo/bar'
 	 * @param {string} url
 	 * @returns {string}
 	 */
@@ -184,7 +205,9 @@ export default {
 				if (isFileUri) return this.dirname(rootUri);
 				else {
 					if (docId.endsWith("/")) docId = docId.slice(0, -1);
-					docId = [...docId.split("/").slice(0, -1), ""].join("/");
+					// Performance optimization: Avoid array allocation & join with string indexing.
+					const lastIdx = docId.lastIndexOf("/");
+					docId = lastIdx === -1 ? "" : docId.slice(0, lastIdx + 1);
 					return Uri.format(rootUri, docId);
 				}
 			} catch (error) {
@@ -192,7 +215,10 @@ export default {
 			}
 		} else {
 			if (url.endsWith("/")) url = url.slice(0, -1);
-			return [...url.split("/").slice(0, -1), ""].join("/") + urlObj.query;
+			// Performance optimization: Avoid array allocation & join with string indexing.
+			const lastIdx = url.lastIndexOf("/");
+			const dir = lastIdx === -1 ? "" : url.slice(0, lastIdx + 1);
+			return dir + urlObj.query;
 		}
 	},
 
@@ -202,10 +228,17 @@ export default {
 	 * @returns {{url:string, query:string}}}
 	 */
 	parse(url) {
-		const [uri, query = ""] = url.split(/(?=\?)/);
+		// Performance optimization: Fast string lookup instead of RegExp lookahead split(/(?=\?)/).
+		const index = url.indexOf("?");
+		if (index === -1) {
+			return {
+				url,
+				query: "",
+			};
+		}
 		return {
-			url: uri,
-			query,
+			url: url.slice(0, index),
+			query: url.slice(index),
 		};
 	},
 
@@ -260,7 +293,8 @@ export default {
 	 * @returns {"ftp:"|"sftp:"|"http:"|"https:"}
 	 */
 	getProtocol(url) {
-		return (/^([a-z]+:)\/\/\/?/i.exec(url) || [])[1] || "";
+		// Performance optimization: Use module-hoisted RegExp.
+		return (PROTOCOL_SCHEME_PATTERN.exec(url) || [])[1] || "";
 	},
 	/**
 	 *
