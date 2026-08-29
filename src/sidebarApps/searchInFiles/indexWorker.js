@@ -140,8 +140,12 @@ async function sync(files) {
 	}
 
 	const currentUrls = new Set(files.map((file) => file.url));
+	const urlsToDelete = [];
 	for (const url of existingRecords.keys()) {
-		if (!currentUrls.has(url)) await deleteRecord(db, url);
+		if (!currentUrls.has(url)) urlsToDelete.push(url);
+	}
+	if (urlsToDelete.length) {
+		await deleteRecords(db, urlsToDelete);
 	}
 
 	postStatus({
@@ -249,9 +253,14 @@ async function writeRecord(db, _oldRecord, record) {
 	await transactionDone(tx);
 }
 
-async function deleteRecord(db, url) {
+// Batch deletion of multiple URLs in a single readwrite IndexedDB transaction to avoid N transaction overheads
+async function deleteRecords(db, urls) {
+	if (!urls.length) return;
 	const tx = db.transaction("files", "readwrite");
-	tx.objectStore("files").delete(url);
+	const store = tx.objectStore("files");
+	for (const url of urls) {
+		store.delete(url);
+	}
 	await transactionDone(tx);
 }
 
