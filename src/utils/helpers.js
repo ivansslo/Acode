@@ -10,45 +10,50 @@ import path from "./Path";
 import Uri from "./Uri";
 import Url from "./Url";
 
+const FILE_TYPE_ENTRIES = [
+	["babel", /\.babelrc$/i],
+	["jsmap", /\.js\.map$/i],
+	["yarn", /^yarn\.lock$/i],
+	["testjs", /\.test\.js$/i],
+	["testts", /\.test\.ts$/i],
+	["cssmap", /\.css\.map$/i],
+	["typescriptdef", /\.d\.ts$/i],
+	["clojurescript", /\.cljs$/i],
+	["cppheader", /\.(hh|hpp)$/i],
+	["jsconfig", /^jsconfig.json$/i],
+	["tsconfig", /^tsconfig.json$/i],
+	["android", /\.(apk|aab|slim)$/i],
+	["jsbeautify", /^\.jsbeautifyrc$/i],
+	["webpack", /^webpack\.config\.js$/i],
+	["audio", /\.(mp3|wav|ogg|flac|aac)$/i],
+	["git", /(^\.gitignore$)|(^\.gitmodules$)/i],
+	["video", /\.(mp4|m4a|mov|3gp|wmv|flv|avi)$/i],
+	["image", /\.(png|jpg|jpeg|gif|bmp|ico|webp)$/i],
+	["npm", /(^package\.json$)|(^package\-lock\.json$)/i],
+	["compressed", /\.(zip|rar|7z|tar|gz|gzip|dmg|iso)$/i],
+	[
+		"eslint",
+		/(^\.eslintrc(\.(json5?|ya?ml|toml))?$|eslint\.config\.(c?js|json)$)/i,
+	],
+	[
+		"postcssconfig",
+		/(^\.postcssrc(\.(json5?|ya?ml|toml))?$|postcss\.config\.(c?js|json)$)/i,
+	],
+	[
+		"prettier",
+		/(^\.prettierrc(\.(json5?|ya?ml|toml))?$|prettier\.config\.(c?js|json)$)/i,
+	],
+];
+
 /**
  * Gets programming language name according to filename
  * @param {String} filename
  * @returns
  */
 function getFileType(filename) {
-	const regex = {
-		babel: /\.babelrc$/i,
-		jsmap: /\.js\.map$/i,
-		yarn: /^yarn\.lock$/i,
-		testjs: /\.test\.js$/i,
-		testts: /\.test\.ts$/i,
-		cssmap: /\.css\.map$/i,
-		typescriptdef: /\.d\.ts$/i,
-		clojurescript: /\.cljs$/i,
-		cppheader: /\.(hh|hpp)$/i,
-		jsconfig: /^jsconfig.json$/i,
-		tsconfig: /^tsconfig.json$/i,
-		android: /\.(apk|aab|slim)$/i,
-		jsbeautify: /^\.jsbeautifyrc$/i,
-		webpack: /^webpack\.config\.js$/i,
-		audio: /\.(mp3|wav|ogg|flac|aac)$/i,
-		git: /(^\.gitignore$)|(^\.gitmodules$)/i,
-		video: /\.(mp4|m4a|mov|3gp|wmv|flv|avi)$/i,
-		image: /\.(png|jpg|jpeg|gif|bmp|ico|webp)$/i,
-		npm: /(^package\.json$)|(^package\-lock\.json$)/i,
-		compressed: /\.(zip|rar|7z|tar|gz|gzip|dmg|iso)$/i,
-		eslint:
-			/(^\.eslintrc(\.(json5?|ya?ml|toml))?$|eslint\.config\.(c?js|json)$)/i,
-		postcssconfig:
-			/(^\.postcssrc(\.(json5?|ya?ml|toml))?$|postcss\.config\.(c?js|json)$)/i,
-		prettier:
-			/(^\.prettierrc(\.(json5?|ya?ml|toml))?$|prettier\.config\.(c?js|json)$)/i,
-	};
-
-	const fileType = Object.keys(regex).find((type) =>
-		regex[type].test(filename),
-	);
-	if (fileType) return fileType;
+	for (const [type, regex] of FILE_TYPE_ENTRIES) {
+		if (regex.test(filename)) return type;
+	}
 
 	return Url.extname(filename).substring(1);
 }
