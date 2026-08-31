@@ -18,14 +18,22 @@ export default {
 				if (isFileUri) return this.basename(rootUri);
 
 				if (docId.endsWith("/")) docId = docId.slice(0, -1);
-				docId = docId.split(":").pop();
-				return this.pathname(docId).split("/").pop();
+				const colonIdx = docId.lastIndexOf(":");
+				if (colonIdx !== -1) docId = docId.slice(colonIdx + 1);
+
+				// Optimize: Use lastIndexOf('/') slice instead of split('/').pop()
+				const pathName = this.pathname(docId);
+				const lastSlash = pathName.lastIndexOf("/");
+				return lastSlash === -1 ? pathName : pathName.slice(lastSlash + 1);
 			} catch (error) {
 				return null;
 			}
 		} else {
 			if (url.endsWith("/")) url = url.slice(0, -1);
-			return this.pathname(url).split("/").pop();
+			// Optimize: Use lastIndexOf('/') slice instead of split('/').pop()
+			const pathName = this.pathname(url);
+			const lastSlash = pathName.lastIndexOf("/");
+			return lastSlash === -1 ? pathName : pathName.slice(lastSlash + 1);
 		}
 	},
 
@@ -69,15 +77,25 @@ export default {
 
 		let { url, query } = this.parse(pathnames[0]);
 
-		const protocol = (this.PROTOCOL_PATTERN.exec(url) || [])[0] || "";
+		const match = this.PROTOCOL_PATTERN.exec(url);
+		const protocol = match ? match[0] : "";
 
 		if (protocol === "content://") {
 			try {
 				if (pathnames[1].startsWith("/")) pathnames[1] = pathnames[1].slice(1);
 				const contentUri = Uri.parse(url);
-				let [root, pathname] = contentUri.docId.split(":");
-				let newDocId = path.join(pathname, ...pathnames.slice(1));
-				if (/^content:\/\/com.termux/.test(url)) {
+				const colonIdx = contentUri.docId.indexOf(":");
+				let root;
+				let pathname;
+				if (colonIdx !== -1) {
+					root = contentUri.docId.slice(0, colonIdx);
+					pathname = contentUri.docId.slice(colonIdx + 1);
+				} else {
+					root = contentUri.docId;
+					pathname = undefined;
+				}
+				let newDocId = path.join(pathname || "", ...pathnames.slice(1));
+				if (url.startsWith("content://com.termux")) {
 					const rootCondition = root.endsWith("/");
 					const newDocIdCondition = newDocId.startsWith("/");
 					if (rootCondition === newDocIdCondition) {
@@ -107,7 +125,8 @@ export default {
 				return null;
 			}
 		} else if (protocol) {
-			url = url.replace(new RegExp("^" + protocol), "");
+			// Optimize: Replace dynamic new RegExp("^" + protocol) with slice(protocol.length)
+			url = url.slice(protocol.length);
 			pathnames[0] = url;
 			return protocol + path.join(...pathnames) + query;
 		} else {
@@ -122,8 +141,10 @@ export default {
 	safe(url) {
 		let { url: uri, query } = this.parse(url);
 		url = uri;
-		const protocol = (this.PROTOCOL_PATTERN.exec(url) || [])[0] || "";
-		if (protocol) url = url.replace(new RegExp("^" + protocol), "");
+		const match = this.PROTOCOL_PATTERN.exec(url);
+		const protocol = match ? match[0] : "";
+		// Optimize: Replace dynamic new RegExp("^" + protocol) with slice(protocol.length)
+		if (protocol) url = url.slice(protocol.length);
 		const parts = url.split("/").map((part, i) => {
 			if (i === 0) return part;
 			return fixedEncodeURIComponent(part);
@@ -144,22 +165,34 @@ export default {
 	pathname(url) {
 		if (typeof url !== "string" || !this.PROTOCOL_PATTERN.test(url)) return url;
 
-		url = url.split("?")[0];
-		const protocol = (this.PROTOCOL_PATTERN.exec(url) || [])[0] || "";
+		// Optimize: Replace url.split("?")[0] with indexOf('?') slice
+		const queryIdx = url.indexOf("?");
+		if (queryIdx !== -1) url = url.slice(0, queryIdx);
+
+		const match = this.PROTOCOL_PATTERN.exec(url);
+		const protocol = match ? match[0] : "";
 
 		if (protocol === "content://") {
 			try {
 				const { rootUri, docId, isFileUri } = Uri.parse(url);
 				if (isFileUri) return this.pathname(rootUri);
-				else return "/" + (docId.split(":")[1] || docId);
+				else {
+					const colonIdx = docId.indexOf(":");
+					return "/" + (colonIdx !== -1 ? docId.slice(colonIdx + 1) : docId);
+				}
 			} catch (error) {
 				return null;
 			}
 		} else {
-			if (protocol) url = url.replace(new RegExp("^" + protocol), "");
+			// Optimize: Replace dynamic new RegExp("^" + protocol) with slice(protocol.length)
+			if (protocol) url = url.slice(protocol.length);
 
-			if (protocol !== "file:///")
-				return "/" + url.split("/").slice(1).join("/");
+			if (protocol !== "file:///") {
+				// Optimize: Slicing from first slash instead of split('/').slice(1).join('/')
+				const slashIdx = url.indexOf("/");
+				if (slashIdx === -1) return "/";
+				return url.slice(slashIdx);
+			}
 
 			return "/" + url;
 		}
@@ -184,7 +217,9 @@ export default {
 				if (isFileUri) return this.dirname(rootUri);
 				else {
 					if (docId.endsWith("/")) docId = docId.slice(0, -1);
-					docId = [...docId.split("/").slice(0, -1), ""].join("/");
+					// Optimize: Use lastIndexOf('/') slice instead of split('/').slice(0, -1).join('/')
+					const lastSlash = docId.lastIndexOf("/");
+					docId = lastSlash === -1 ? "" : docId.slice(0, lastSlash + 1);
 					return Uri.format(rootUri, docId);
 				}
 			} catch (error) {
@@ -192,7 +227,11 @@ export default {
 			}
 		} else {
 			if (url.endsWith("/")) url = url.slice(0, -1);
-			return [...url.split("/").slice(0, -1), ""].join("/") + urlObj.query;
+			// Optimize: Use lastIndexOf('/') slice instead of split('/').slice(0, -1).join('/')
+			const lastSlash = url.lastIndexOf("/");
+			return (
+				(lastSlash === -1 ? "" : url.slice(0, lastSlash + 1)) + urlObj.query
+			);
 		}
 	},
 
@@ -202,10 +241,14 @@ export default {
 	 * @returns {{url:string, query:string}}}
 	 */
 	parse(url) {
-		const [uri, query = ""] = url.split(/(?=\?)/);
+		// Optimize: Use indexOf('?') and slice instead of split(/(?=\?)/)
+		const queryIdx = url.indexOf("?");
+		if (queryIdx === -1) {
+			return { url, query: "" };
+		}
 		return {
-			url: uri,
-			query,
+			url: url.slice(0, queryIdx),
+			query: url.slice(queryIdx),
 		};
 	},
 
