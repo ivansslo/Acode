@@ -115,13 +115,16 @@ function searchInFile({ file, content, search }) {
 		text = `...${text.slice(-30)}`;
 	}
 
+	// Precompute line starts once per file content to avoid expensive repeated substring splitting
+	const lineStarts = getLineStarts(content);
+
 	while ((match = search.exec(content))) {
 		const [word] = match;
 		const start = match.index;
 		const end = start + word.length;
 		const position = {
-			start: getLineColumn(content, start),
-			end: getLineColumn(content, end),
+			start: getLineColumn(lineStarts, start),
+			end: getLineColumn(lineStarts, end),
 		};
 		const [line, renderText] = getSurrounding(content, word, start, end);
 		text += `\n\t${line.trim()}`;
@@ -197,28 +200,48 @@ function getSurrounding(content, word, start, end) {
 }
 
 /**
- * Determines the line and column numbers for a given position in the file.
+ * Precomputes start index of each line in text.
  *
- * @param {string} file - The file content as a string.
- * @param {number} position - The position in the file for which line and column
- * numbers are to be determined.
- *
- * @returns {Object} An object with 'line' and 'column' properties, representing
- * the line and column numbers respectively for the given position.
- *
- * @example
- *
- * const file = 'Hello, this is a test.\nAnother test is here.';
- * const position = 15;
- * const lineColumn = getLineColumn(file, position);
- *
- * // lineColumn: { line: 1, column: 16 }
+ * @param {string} text - The file content.
+ * @returns {number[]} Array of line start character positions.
  */
-function getLineColumn(file, position) {
-	const lines = file.substring(0, position).split("\n");
-	const lineNumber = lines.length - 1;
-	const columnNumber = lines[lineNumber].length;
-	return { row: lineNumber, column: columnNumber };
+function getLineStarts(text) {
+	const lineStarts = [0];
+	for (let i = 0; i < text.length; i++) {
+		if (text[i] === "\n") {
+			lineStarts.push(i + 1);
+		}
+	}
+	return lineStarts;
+}
+
+/**
+ * Determines the line and column numbers for a given position in the file.
+ * Uses binary search over precomputed lineStarts for O(log L) performance.
+ *
+ * @param {string|number[]} fileOrLineStarts - The file content as a string or precomputed lineStarts array.
+ * @param {number} position - The position in the file for which line and column numbers are determined.
+ *
+ * @returns {{ row: number, column: number }} An object with 'row' (0-indexed) and 'column' properties.
+ */
+function getLineColumn(fileOrLineStarts, position) {
+	const lineStarts = Array.isArray(fileOrLineStarts)
+		? fileOrLineStarts
+		: getLineStarts(fileOrLineStarts);
+
+	let low = 0;
+	let high = lineStarts.length - 1;
+	while (low <= high) {
+		const mid = (low + high) >> 1;
+		if (lineStarts[mid] <= position) {
+			low = mid + 1;
+		} else {
+			high = mid - 1;
+		}
+	}
+	const row = high;
+	const column = position - lineStarts[row];
+	return { row, column };
 }
 
 /**
