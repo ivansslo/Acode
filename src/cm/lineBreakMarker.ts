@@ -3,7 +3,7 @@ import { RangeSetBuilder } from "@codemirror/state";
 
 class NewlineWidget extends WidgetType {
 	toDOM(): HTMLElement {
-		let span = document.createElement("span");
+		const span = document.createElement("span");
 		span.textContent = "¬";
 		span.className = "cm-newline-marker";
 		return span;
@@ -12,6 +12,14 @@ class NewlineWidget extends WidgetType {
 		return other instanceof NewlineWidget;
 	}
 }
+
+// Optimization: Reuse a single static widget and decoration instance to prevent
+// allocating hundreds of NewlineWidget and Decoration objects per viewport update.
+const newlineWidget = new NewlineWidget();
+const newlineDeco = Decoration.widget({
+	widget: newlineWidget,
+	side: 1,
+});
 
 export const lineBreakMarkerPlugin = ViewPlugin.fromClass(
 	class {
@@ -28,23 +36,23 @@ export const lineBreakMarkerPlugin = ViewPlugin.fromClass(
 		}
 
 		getDecorations(view: EditorView): DecorationSet {
-			let builder = new RangeSetBuilder<Decoration>();
+			const builder = new RangeSetBuilder<Decoration>();
+			const doc = view.state.doc;
+			const totalLines = doc.lines;
 			let lastLineNumber = -1;
-			
-			for (let { from, to } of view.visibleRanges) {
-				for (let pos = from; pos <= to; ) {
-					let line = view.state.doc.lineAt(pos);
-					
-					if (line.number > lastLineNumber && line.number < view.state.doc.lines) {
-						let deco = Decoration.widget({
-							widget: new NewlineWidget(),
-							side: 1,
-						});
-						builder.add(line.to, line.to, deco);
-						lastLineNumber = line.number;
+
+			// Optimization: Iterate line numbers directly from startLine to endLine
+			// instead of repeatedly resolving position coordinates with doc.lineAt(pos).
+			for (const { from, to } of view.visibleRanges) {
+				const startLine = doc.lineAt(from).number;
+				const endLine = doc.lineAt(to).number;
+
+				for (let lineNum = startLine; lineNum <= endLine; lineNum++) {
+					if (lineNum > lastLineNumber && lineNum < totalLines) {
+						const line = doc.line(lineNum);
+						builder.add(line.to, line.to, newlineDeco);
+						lastLineNumber = lineNum;
 					}
-					
-					pos = line.to + 1;
 				}
 			}
 			return builder.finish();
