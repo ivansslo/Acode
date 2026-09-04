@@ -10,7 +10,6 @@ import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
-import escapeStringRegexp from "escape-string-regexp";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
@@ -1266,9 +1265,8 @@ openFolder.removeItem = (url) => {
 
 openFolder.removeFolders = (url) => {
 	({ url } = Url.parse(url));
-	const regex = new RegExp("^" + escapeStringRegexp(url));
 	addedFolder.forEach((folder) => {
-		if (regex.test(folder.url)) {
+		if (folder.url.indexOf(url) === 0) {
 			folder.remove();
 		}
 	});
