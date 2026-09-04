@@ -1,4 +1,3 @@
-import escapeStringRegexp from "escape-string-regexp";
 import path from "./Path";
 
 function parseStorageList() {
@@ -94,14 +93,14 @@ export default {
 
 			const matches = [];
 			for (let storage of storageList) {
-				const regex = new RegExp(
-					"^" + escapeStringRegexp(storage.uri ?? storage.url),
-				);
-				matches.push({
-					regex,
-					charMatched: url.length - url.replace(regex, "").length,
-					storage,
-				});
+				const prefix = storage.uri ?? storage.url;
+				if (prefix && url.indexOf(prefix) === 0) {
+					matches.push({
+						prefix,
+						charMatched: prefix.length,
+						storage,
+					});
+				}
 			}
 
 			const matched = matches.sort((a, b) => {
@@ -109,11 +108,11 @@ export default {
 			})[0];
 
 			if (matched) {
-				const { storage, regex } = matched;
+				const { storage, prefix } = matched;
 				const { name } = storage;
 				const [base, paths] = url.split("::");
 				url = base + "/" + paths.split("/").slice(1).join("/");
-				return url.replace(regex, name).replace(/\/+/g, "/");
+				return (name + url.slice(prefix.length)).replace(/\/+/g, "/");
 			}
 
 			return url;
