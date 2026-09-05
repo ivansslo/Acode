@@ -93,25 +93,97 @@ function readWordBefore(doc: Text, index: number): string {
 	return doc.sliceString(start, end + 1).toLowerCase();
 }
 
-function shouldRenderColor(doc: Text, start: number, end: number): boolean {
-	const immediatePrev = charAt(doc, start - 1);
+function readWordBeforeInText(text: string, index: number): string | null {
+	let pos = index;
+	while (pos >= 0 && isWhitespace(text[pos])) pos--;
+	if (pos < 0) return null;
+	if (text[pos] === "(") {
+		pos--;
+	}
+	while (pos >= 0 && isWhitespace(text[pos])) pos--;
+	if (pos < 0) return null;
+	const end = pos;
+	while (pos >= 0 && isAlpha(text[pos])) pos--;
+	const start = pos + 1;
+	if (start === 0) return null; // Word may extend before start of text string
+	if (end < start) return "";
+	return text.slice(start, end + 1).toLowerCase();
+}
+
+/**
+ * Fast check whether a color match should be rendered as a chip.
+ * Uses local string `text` and relative indices `textStart` and `textEnd`
+ * to avoid expensive single-character CodeMirror `Text.sliceString()` calls
+ * across `doc`, falling back to `doc` only when checks cross the `text` boundary.
+ */
+function shouldRenderColor(
+	doc: Text,
+	text: string,
+	textStart: number,
+	textEnd: number,
+	start: number,
+	end: number,
+): boolean {
+	const immediatePrev =
+		textStart > 0 ? text[textStart - 1] : charAt(doc, start - 1);
 	if (disallowedBoundaryBefore.has(immediatePrev)) return false;
 
-	const immediateNext = charAt(doc, end);
+	const immediateNext =
+		textEnd < text.length ? text[textEnd] : charAt(doc, end);
 	if (disallowedBoundaryAfter.has(immediateNext)) return false;
 
-	const prevNonWhitespaceIndex = findPrevNonWhitespace(doc, start);
-	if (prevNonWhitespaceIndex !== -1) {
-		const prevNonWhitespaceChar = charAt(doc, prevNonWhitespaceIndex);
-		if (disallowedBoundaryBefore.has(prevNonWhitespaceChar)) return false;
-		const prevWord = readWordBefore(doc, prevNonWhitespaceIndex);
-		if (ignoredLeadingWords.has(prevWord)) return false;
+	let prevNonWsIndexInText = -1;
+	for (let i = textStart - 1; i >= 0; i--) {
+		if (!isWhitespace(text[i])) {
+			prevNonWsIndexInText = i;
+			break;
+		}
 	}
 
-	const nextNonWhitespaceIndex = findNextNonWhitespace(doc, end);
-	if (nextNonWhitespaceIndex < doc.length) {
-		const nextNonWhitespaceChar = charAt(doc, nextNonWhitespaceIndex);
+	if (prevNonWsIndexInText !== -1) {
+		const prevNonWhitespaceChar = text[prevNonWsIndexInText];
+		if (disallowedBoundaryBefore.has(prevNonWhitespaceChar)) return false;
+
+		const word = readWordBeforeInText(text, prevNonWsIndexInText);
+		if (word !== null) {
+			if (ignoredLeadingWords.has(word)) return false;
+		} else {
+			// Check spilled before start of local text string; fallback to doc
+			const docIdx = findPrevNonWhitespace(doc, start);
+			if (
+				docIdx !== -1 &&
+				ignoredLeadingWords.has(readWordBefore(doc, docIdx))
+			) {
+				return false;
+			}
+		}
+	} else {
+		const prevNonWhitespaceIndex = findPrevNonWhitespace(doc, start);
+		if (prevNonWhitespaceIndex !== -1) {
+			const prevNonWhitespaceChar = charAt(doc, prevNonWhitespaceIndex);
+			if (disallowedBoundaryBefore.has(prevNonWhitespaceChar)) return false;
+			const prevWord = readWordBefore(doc, prevNonWhitespaceIndex);
+			if (ignoredLeadingWords.has(prevWord)) return false;
+		}
+	}
+
+	let nextNonWsIndexInText = -1;
+	for (let i = textEnd; i < text.length; i++) {
+		if (!isWhitespace(text[i])) {
+			nextNonWsIndexInText = i;
+			break;
+		}
+	}
+
+	if (nextNonWsIndexInText !== -1) {
+		const nextNonWhitespaceChar = text[nextNonWsIndexInText];
 		if (disallowedBoundaryAfter.has(nextNonWhitespaceChar)) return false;
+	} else {
+		const nextNonWhitespaceIndex = findNextNonWhitespace(doc, end);
+		if (nextNonWhitespaceIndex < doc.length) {
+			const nextNonWhitespaceChar = charAt(doc, nextNonWhitespaceIndex);
+			if (disallowedBoundaryAfter.has(nextNonWhitespaceChar)) return false;
+		}
 	}
 
 	return true;
@@ -277,9 +349,13 @@ function colorRanges(
 		for (let m: RegExpExecArray | null; (m = RGBG.exec(text)); ) {
 			if (deco.length >= MAX_COLOR_CHIPS) break;
 			const raw = m[2];
-			const start = from + m.index + m[1].length;
+			const textStart = m.index + m[1].length;
+			const textEnd = textStart + raw.length;
+			const start = from + textStart;
 			const end = start + raw.length;
-			if (!shouldRenderColor(doc, start, end)) continue;
+			if (!shouldRenderColor(doc, text, textStart, textEnd, start, end)) {
+				continue;
+			}
 			const c = color(raw);
 			const colorHex = c.hex.toString(false);
 			deco.push(
