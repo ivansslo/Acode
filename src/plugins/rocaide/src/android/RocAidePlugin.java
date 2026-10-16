@@ -1,4 +1,4 @@
-package com.foxdebug.acode.rk.rocdex;
+package com.foxdebug.acode.rk.rocaide;
 
 import android.util.Log;
 
@@ -20,16 +20,16 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * Rocdex Cordova Plugin
+ * RocAide Cordova Plugin
  *
  * Manages the codexapp (Codex CLI web UI) lifecycle:
  * - Check Node.js availability
  * - Start / stop the codexapp HTTP server
  * - Query server status
  */
-public class RocdexPlugin extends CordovaPlugin {
+public class RocAidePlugin extends CordovaPlugin {
 
-    private static final String TAG = "RocdexPlugin";
+    private static final String TAG = "RocAidePlugin";
     private static final int DEFAULT_PORT = 18923;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -42,7 +42,7 @@ public class RocdexPlugin extends CordovaPlugin {
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
         initialized = true;
-        Log.d(TAG, "RocdexPlugin initialized successfully");
+        Log.d(TAG, "RocAidePlugin initialized successfully");
     }
 
     // ── Cordova entry point ──────────────────────────────────────────────

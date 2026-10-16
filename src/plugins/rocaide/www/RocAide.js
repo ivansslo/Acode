@@ -1,14 +1,14 @@
 /**
- * Rocdex Cordova Plugin — JavaScript API
+ * RocAide Cordova Plugin — JavaScript API
  *
  * Provides access to the Codex CLI web interface manager.
  */
 const exec = (action, args = []) =>
   new Promise((resolve, reject) => {
-    cordova.exec(resolve, reject, "Rocdex", action, args);
+    cordova.exec(resolve, reject, "RocAide", action, args);
   });
 
-const Rocdex = {
+const RocAide = {
   /**
    * Check whether Node.js is available on the device.
    * @returns {Promise<{ available: boolean, version?: string }>}
@@ -59,4 +59,4 @@ const Rocdex = {
   },
 };
 
-module.exports = Rocdex;
+module.exports = RocAide;

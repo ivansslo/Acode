@@ -1,9 +1,9 @@
 {
-  "name": "com.foxdebug.acode.rk.rocdex",
+  "name": "com.foxdebug.acode.rk.rocaide",
   "version": "1.0.0",
-  "description": "Rocdex - Codex UI integration for Acode",
+  "description": "RocAide - Codex UI integration for Acode",
   "cordova": {
-    "id": "com.foxdebug.acode.rk.rocdex",
+    "id": "com.foxdebug.acode.rk.rocaide",
     "platforms": [
       "android"
     ]

@@ -12,7 +12,7 @@ import About from "pages/about";
 import FileBrowser from "pages/fileBrowser";
 import plugins from "pages/plugins";
 import Problems from "pages/problems/problems";
-import openRocdex from "pages/rocdex";
+import openRocAide from "pages/rocaide";
 import openWelcomeTab from "pages/welcome/welcome";
 import changeEncoding from "palettes/changeEncoding";
 import changeMode from "palettes/changeMode";
@@ -283,8 +283,8 @@ export default {
 				About();
 				break;
 
-			case "rocdex":
-				openRocdex();
+			case "rocaide":
+				openRocAide();
 				break;
 
 			default:

@@ -1,4 +1,4 @@
-name: Build APK (Rocdex)
+name: Build APK (RocAide)
 
 on:
   workflow_dispatch:
@@ -83,13 +83,13 @@ jobs:
       - name: Generate signing keystore
         run: |
           keytool -genkeypair -v \
-            -keystore rocdex-release.keystore \
-            -storepass rocdex2024 \
-            -alias rocdex \
-            -keypass rocdex2024 \
+            -keystore rocaide-release.keystore \
+            -storepass rocaide2024 \
+            -alias rocaide \
+            -keypass rocaide2024 \
             -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Rocdex,OU=Dev,O=Rocdex,L=Jakarta,ST=ID,C=ID"
-          echo '{ "android": { "release": { "keystore": "rocdex-release.keystore", "storePassword": "rocdex2024", "alias": "rocdex", "password": "rocdex2024" } } }' > build.json
+            -dname "CN=RocAide,OU=Dev,O=RocAide,L=Jakarta,ST=ID,C=ID"
+          echo '{ "android": { "release": { "keystore": "rocaide-release.keystore", "storePassword": "rocaide2024", "alias": "rocaide", "password": "rocaide2024" } } }' > build.json
 
       - name: Build APK
         run: |
@@ -107,14 +107,14 @@ jobs:
           find platforms/android/app/build/outputs/apk -name '*.apk' | while read apk; do
             dir=$(dirname "$apk")
             base=$(basename "$apk" .apk)
-            mv "$apk" "$dir/acode-rocdex-v${VERSION}-${base}.apk"
+            mv "$apk" "$dir/acode-rocaide-v${VERSION}-${base}.apk"
           done
           echo "Final APK files:"
           find platforms/android/app/build/outputs/apk -name '*.apk' -exec ls -lh {} \;
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: acode-rocdex-v${{ inputs.build_mode || 'prod' }}-${{ github.run_number }}
+          name: acode-rocaide-v${{ inputs.build_mode || 'prod' }}-${{ github.run_number }}
           path: platforms/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: warn
 
@@ -122,8 +122,8 @@ jobs:
         if: success() && (inputs.build_mode == 'prod' || github.event_name == 'push')
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: rocdex-v${{ github.run_number }}
-          name: "Rocdex Acode v${{ github.run_number }}"
+          tag_name: rocaide-v${{ github.run_number }}
+          name: "RocAide v${{ github.run_number }}"
           files: platforms/android/app/build/outputs/apk/**/*.apk
           prerelease: true
           generate_release_notes: true
