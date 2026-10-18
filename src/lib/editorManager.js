@@ -669,12 +669,18 @@ async function EditorManager($header, $body) {
 		];
 	}
 
-	function applyOptions(keys) {
+	/**
+	 * Apply editor options to the CodeMirror instance.
+	 * Optimizes performance by batching multiple StateEffect dispatches into one.
+	 * @param {string[]} [keys] - List of option keys to apply. If omitted, all options are applied.
+	 * @param {StateEffect<any>[]} [targetEffects] - Optional array to collect effects for external batching.
+	 */
+	function applyOptions(keys, targetEffects = null) {
 		const filter = keys ? new Set(keys) : null;
+		const effects = [];
 		for (const spec of cmOptionSpecs) {
 			if (filter && !spec.keys.some((k) => filter.has(k))) continue;
 			const built = spec.build();
-			const effects = [];
 			if (spec.compartments.length === 1) {
 				effects.push(spec.compartments[0].reconfigure(built));
 			} else {
@@ -685,6 +691,11 @@ async function EditorManager($header, $body) {
 					effects.push(comp.reconfigure(ext));
 				}
 			}
+		}
+
+		if (targetEffects) {
+			targetEffects.push(...effects);
+		} else if (effects.length > 0) {
 			editor.dispatch({ effects });
 		}
 	}
@@ -1017,11 +1028,23 @@ async function EditorManager($header, $body) {
 	};
 
 	// Set CodeMirror theme by id registered in our registry
-	editor.setTheme = function (themeId) {
+	/**
+	 * Set the CodeMirror editor theme.
+	 * Optimizes performance by allowing batching with other StateEffects.
+	 * @param {string} themeId - The ID of the theme to apply.
+	 * @param {StateEffect<any>[]} [targetEffects] - Optional array to collect effects for external batching.
+	 * @returns {boolean} Success state.
+	 */
+	editor.setTheme = function (themeId, targetEffects = null) {
 		try {
 			const id = String(themeId || "");
 			const ext = getThemeExtensions(id, [oneDark]);
-			editor.dispatch({ effects: themeCompartment.reconfigure(ext) });
+			const effect = themeCompartment.reconfigure(ext);
+			if (targetEffects) {
+				targetEffects.push(effect);
+			} else {
+				editor.dispatch({ effects: effect });
+			}
 			return true;
 		} catch (_) {
 			return false;
@@ -2027,8 +2050,14 @@ async function EditorManager($header, $body) {
 
 	appSettings.on("update:editorTheme", function () {
 		const desiredTheme = appSettings?.value?.editorTheme || "one_dark";
-		editor.setTheme(desiredTheme);
-		applyOptions(["rainbowBrackets"]);
+		// Batch theme and rainbow bracket updates to avoid redundant view update cycles.
+		// Each dispatch triggers a full DOM layout/reflow in CodeMirror 6.
+		const effects = [];
+		editor.setTheme(desiredTheme, effects);
+		applyOptions(["rainbowBrackets"], effects);
+		if (effects.length > 0) {
+			editor.dispatch({ effects });
+		}
 	});
 
 	appSettings.on("update:lintGutter", function (value) {

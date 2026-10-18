@@ -1,0 +1,3 @@
+## 2026-07-05 - [CodeMirror 6 StateEffect Batching]
+**Learning:** In CodeMirror 6, every `editor.dispatch()` call triggers a view update cycle, which includes expensive DOM measurements and reflows. When updating multiple aspects of the editor (e.g., theme and options like rainbow brackets), dispatching them individually causes redundant layout work.
+**Action:** Always prefer batching `StateEffect` objects into a single `editor.dispatch({ effects })` call when they occur within the same logical operation. Refactored `applyOptions` and `setTheme` in `src/lib/editorManager.js` to support an optional `targetEffects` array for this purpose.
