@@ -22,5 +22,9 @@ tsconfig.tsbuildinfo
 .dev-cert.pem
 .dev-key.pem
 
+# Mandat keamanan Owner: vault terenkripsi tidak boleh ter-track di repo manapun
+*.vault
+*.env.vault
+
 /www/cordova.js
 /www/cordova_plugins.js
