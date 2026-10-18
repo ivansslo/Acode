@@ -53,6 +53,10 @@ function getFileType(filename) {
 	return Url.extname(filename).substring(1);
 }
 
+// Module-level caches to optimize getVirtualPath performance and avoid repetitive parsing
+let _cachedStorageListStr = null;
+let _cachedStorageList = null;
+
 export default {
 	/**
 	 * @deprecated This method is deprecated, use 'encodings.decode' instead.
@@ -236,28 +240,48 @@ export default {
 	getVirtualPath(url) {
 		url = Url.parse(url).url;
 
-		if (/^content:/.test(url)) {
+		// Optimized check for startsWith instead of regex test
+		if (url.startsWith("content:")) {
 			const primary = Uri.getPrimaryAddress(url);
 			if (primary) {
 				return primary;
 			}
 		}
 
-		/**@type {string[]} */
-		const storageList = this.parseJSON(localStorage.storageList);
-		if (!Array.isArray(storageList)) return url;
+		const storageListStr = localStorage.storageList;
+		let storageList = _cachedStorageList;
+
+		// If storage list changes, re-parse and cache mapped items
+		if (storageListStr !== _cachedStorageListStr) {
+			const parsed = this.parseJSON(storageListStr);
+			if (Array.isArray(parsed)) {
+				storageList = parsed
+					.map((uuid) => {
+						let storageUrl = Url.parse(uuid.uri || uuid.url || "").url;
+						if (storageUrl && storageUrl.endsWith("/")) {
+							storageUrl = storageUrl.slice(0, -1);
+						}
+						return {
+							name: uuid.name,
+							storageUrl,
+						};
+					})
+					.filter((item) => item.storageUrl);
+			} else {
+				storageList = null;
+			}
+			_cachedStorageListStr = storageListStr;
+			_cachedStorageList = storageList;
+		}
+
+		if (!storageList) return url;
 		const storageListLen = storageList.length;
 
+		// Optimized prefix matching without dynamic RegExp compile or replacement
 		for (let i = 0; i < storageListLen; ++i) {
-			const uuid = storageList[i];
-			let storageUrl = Url.parse(uuid.uri || uuid.url || "").url;
-			if (!storageUrl) continue;
-			if (storageUrl.endsWith("/")) {
-				storageUrl = storageUrl.slice(0, -1);
-			}
-			const regex = new RegExp("^" + escapeStringRegexp(storageUrl));
-			if (regex.test(url)) {
-				url = url.replace(regex, uuid.name);
+			const item = storageList[i];
+			if (url.startsWith(item.storageUrl)) {
+				url = item.name + url.slice(item.storageUrl.length);
 				break;
 			}
 		}

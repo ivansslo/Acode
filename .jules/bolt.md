@@ -1,0 +1,3 @@
+## 2026-07-29 - [Optimization of getVirtualPath via localStorage and regex caching]
+**Learning:** High-frequency, core path resolution utilities (such as `getVirtualPath`) can become major bottlenecks when they perform repeated synchronous parsing of localStorage keys and compile dynamic RegExp patterns inside loop iterations. Replacing RegExp prefix matching with allocation-free native string operations (`startsWith` + `slice`) reduces matching overhead drastically.
+**Action:** Always prefer native string matching (`startsWith`, `endsWith`, `includes`, `slice`) over dynamically-compiled RegExp objects when matching exact prefixes/suffixes, and cache parsed localStorage assets using clean, file-scoped module variables when the underlying serialized data does not change.
