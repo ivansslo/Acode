@@ -13,6 +13,7 @@ export interface ModesByName {
 
 const modesByName: ModesByName = {};
 const modes: Mode[] = [];
+let cachedSortedModes: Mode[] | null = null;
 
 function normalizeModeKey(value: string): string {
 	return String(value ?? "")
@@ -67,6 +68,7 @@ export function addMode(
 		}
 	});
 	modes.push(mode);
+	cachedSortedModes = null;
 }
 
 /**
@@ -89,6 +91,7 @@ export function removeMode(name: string): void {
 	);
 	if (modeIndex >= 0) {
 		modes.splice(modeIndex, 1);
+		cachedSortedModes = null;
 	}
 }
 
@@ -99,55 +102,20 @@ export function getModeForPath(path: string): Mode {
 	let mode = modesByName.text;
 	const fileName = path.split(/[/\\]/).pop() || "";
 
-	// Sort modes by specificity (descending) to check most specific first
-	const sortedModes = [...modes].sort((a, b) => {
-		return getModeSpecificityScore(b) - getModeSpecificityScore(a);
-	});
+	if (!cachedSortedModes) {
+		// Sort modes by specificity (descending) to check most specific first
+		cachedSortedModes = [...modes].sort((a, b) => {
+			return b.specificityScore - a.specificityScore;
+		});
+	}
 
-	for (const iMode of sortedModes) {
+	for (const iMode of cachedSortedModes) {
 		if (iMode.supportsFile?.(fileName)) {
 			mode = iMode;
 			break;
 		}
 	}
 	return mode;
-}
-
-/**
- * Calculates a specificity score for a mode.
- * Higher score means more specific.
- * - Anchored patterns (e.g., "^Dockerfile") get a base score of 1000.
- * - Non-anchored patterns (extensions) are scored by length.
- */
-function getModeSpecificityScore(modeInstance: Mode): number {
-	const extensionsStr = modeInstance.extensions;
-	let maxScore = 0;
-
-	if (extensionsStr) {
-		const patterns = extensionsStr.split("|");
-		for (const pattern of patterns) {
-			let currentScore = 0;
-			if (pattern.startsWith("^")) {
-				// Exact filename match or anchored pattern
-				currentScore = 1000 + (pattern.length - 1); // Subtract 1 for '^'
-			} else {
-				// Extension match
-				currentScore = pattern.length;
-			}
-			if (currentScore > maxScore) {
-				maxScore = currentScore;
-			}
-		}
-	}
-
-	for (const matcher of modeInstance.filenameMatchers) {
-		const score = 1000 + matcher.source.length;
-		if (score > maxScore) {
-			maxScore = score;
-		}
-	}
-
-	return maxScore;
 }
 
 /**
@@ -177,6 +145,7 @@ export class Mode {
 	extRe: RegExp | null;
 	filenameMatchers: RegExp[];
 	languageExtension: LanguageExtensionProvider | null;
+	specificityScore: number;
 
 	constructor(
 		name: string,
@@ -198,6 +167,34 @@ export class Mode {
 			? options.filenameMatchers.filter((matcher) => matcher instanceof RegExp)
 			: [];
 		this.languageExtension = languageExtension;
+
+		// Pre-calculate specificity score
+		let maxScore = 0;
+		if (this.extensions) {
+			const patterns = this.extensions.split("|");
+			for (const pattern of patterns) {
+				let currentScore = 0;
+				if (pattern.startsWith("^")) {
+					// Exact filename match or anchored pattern
+					currentScore = 1000 + (pattern.length - 1); // Subtract 1 for '^'
+				} else {
+					// Extension match
+					currentScore = pattern.length;
+				}
+				if (currentScore > maxScore) {
+					maxScore = currentScore;
+				}
+			}
+		}
+
+		for (const matcher of this.filenameMatchers) {
+			const score = 1000 + matcher.source.length;
+			if (score > maxScore) {
+				maxScore = score;
+			}
+		}
+		this.specificityScore = maxScore;
+
 		let re = "";
 
 		if (!extensions) {
