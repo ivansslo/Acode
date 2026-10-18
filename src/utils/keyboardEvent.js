@@ -67,7 +67,7 @@ const initKeyboardEventType = (function (event) {
 					? event.altKey
 						? // webkit
 							1
-							: 3
+						: 3
 					: event.shiftKey
 						? 2
 						: // webkit
@@ -155,11 +155,11 @@ export default function KeyboardEvent(type, dict = {}) {
 	const modifiersListArg =
 		initKeyboardEventType > 3
 			? (
-				(ctrlKey ? "Control" : "") +
-				(shiftKey ? " Shift" : "") +
-				(altKey ? " Alt" : "") +
-				(metaKey ? " Meta" : "") +
-				(altGraphKey ? " AltGraph" : "")
+					(ctrlKey ? "Control" : "") +
+					(shiftKey ? " Shift" : "") +
+					(altKey ? " Alt" : "") +
+					(metaKey ? " Meta" : "") +
+					(altGraphKey ? " AltGraph" : "")
 			).trim()
 			: null;
 
