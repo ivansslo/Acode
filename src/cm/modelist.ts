@@ -13,6 +13,8 @@ export interface ModesByName {
 
 const modesByName: ModesByName = {};
 const modes: Mode[] = [];
+// Cache for the sorted list of modes by specificity to avoid redundant sorting on every getModeForPath call
+let cachedSortedModes: Mode[] | null = null;
 
 function normalizeModeKey(value: string): string {
 	return String(value ?? "")
@@ -67,6 +69,8 @@ export function addMode(
 		}
 	});
 	modes.push(mode);
+	// Invalidate the lazy-cached sorted modes list when a new mode is registered
+	cachedSortedModes = null;
 }
 
 /**
@@ -89,6 +93,8 @@ export function removeMode(name: string): void {
 	);
 	if (modeIndex >= 0) {
 		modes.splice(modeIndex, 1);
+		// Invalidate the lazy-cached sorted modes list when a mode is removed
+		cachedSortedModes = null;
 	}
 }
 
@@ -99,12 +105,14 @@ export function getModeForPath(path: string): Mode {
 	let mode = modesByName.text;
 	const fileName = path.split(/[/\\]/).pop() || "";
 
-	// Sort modes by specificity (descending) to check most specific first
-	const sortedModes = [...modes].sort((a, b) => {
-		return getModeSpecificityScore(b) - getModeSpecificityScore(a);
-	});
+	// Use lazy-cached sorted list of modes to avoid sorting on every file lookup
+	if (!cachedSortedModes) {
+		cachedSortedModes = [...modes].sort((a, b) => {
+			return b.specificityScore - a.specificityScore;
+		});
+	}
 
-	for (const iMode of sortedModes) {
+	for (const iMode of cachedSortedModes) {
 		if (iMode.supportsFile?.(fileName)) {
 			mode = iMode;
 			break;
@@ -177,6 +185,8 @@ export class Mode {
 	extRe: RegExp | null;
 	filenameMatchers: RegExp[];
 	languageExtension: LanguageExtensionProvider | null;
+	// Store pre-calculated specificity score to avoid expensive calculation on every sorting pass
+	specificityScore: number;
 
 	constructor(
 		name: string,
@@ -202,6 +212,8 @@ export class Mode {
 
 		if (!extensions) {
 			this.extRe = null;
+			// Compute specificityScore once and cache it on the Mode instance
+			this.specificityScore = getModeSpecificityScore(this);
 			return;
 		}
 
@@ -225,12 +237,17 @@ export class Mode {
 
 		if (!regexParts.length) {
 			this.extRe = null;
+			// Compute specificityScore once and cache it on the Mode instance
+			this.specificityScore = getModeSpecificityScore(this);
 			return;
 		}
 
 		re =
 			regexParts.length === 1 ? regexParts[0] : `(?:${regexParts.join("|")})`;
 		this.extRe = new RegExp(re, "i");
+
+		// Compute specificityScore once and cache it on the Mode instance
+		this.specificityScore = getModeSpecificityScore(this);
 	}
 
 	supportsFile(filename: string): boolean {
