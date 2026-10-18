@@ -26,11 +26,38 @@ export default {
 	basename(path, ext = "") {
 		ext = ext || "";
 		if (path === "" || path === "/") return path;
-		const ar = path.split("/");
-		const last = ar.slice(-1)[0];
-		if (!last) return ar.slice(-2)[0];
-		let res = decodeURI(last.split("?")[0] || "");
-		if (this.extname(res) === ext) res = res.replace(new RegExp(ext + "$"), "");
+
+		// Optimize performance by avoiding slow .split('/') and RegExp generation.
+		// Instead, use native string methods (lastIndexOf, slice, indexOf, endsWith).
+		let lastSlash = path.lastIndexOf("/");
+		let last = "";
+		if (lastSlash === -1) {
+			last = path;
+		} else {
+			if (lastSlash === path.length - 1) {
+				const sub = path.slice(0, -1);
+				const secondLastSlash = sub.lastIndexOf("/");
+				last = secondLastSlash === -1 ? sub : sub.slice(secondLastSlash + 1);
+			} else {
+				last = path.slice(lastSlash + 1);
+			}
+		}
+
+		if (!last) return "";
+
+		let questionIndex = last.indexOf("?");
+		let res = questionIndex === -1 ? last : last.slice(0, questionIndex);
+		if (res.includes("%")) {
+			try {
+				res = decodeURI(res);
+			} catch (e) {
+				// Fallback if decodeURI fails due to malformed URI
+			}
+		}
+
+		if (ext && this.extname(res) === ext && res.endsWith(ext)) {
+			res = res.slice(0, -ext.length);
+		}
 		return res;
 	},
 

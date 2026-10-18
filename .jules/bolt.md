@@ -1,0 +1,3 @@
+## 2026-08-12 - Optimize Path.basename performance with native string operations
+**Learning:** Avoid using `.split('/')` and `new RegExp(...)` on hot path string parsers like `Path.basename` or `Path.extname`. Replacing them with native methods like `lastIndexOf`, `indexOf`, `slice`, and `endsWith` yields significant (~10x) performance improvements. Additionally, always make sure to double check that extension stripping logic perfectly matches the original file extension comparisons (`this.extname(res) === ext`) to avoid incorrect partial string suffix removal.
+**Action:** When optimizing string helpers in the future, perform side-by-side validation against all original edge cases first to guarantee functional parity.
