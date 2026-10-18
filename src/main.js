@@ -510,7 +510,7 @@ async function loadApp() {
 	);
 	const $header = tile({
 		type: "header",
-		text: "Acode",
+		text: "RocAide",
 		lead: $navToggler,
 		tail: $menuToggler,
 	});
