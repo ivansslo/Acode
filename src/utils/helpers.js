@@ -255,9 +255,9 @@ export default {
 			if (storageUrl.endsWith("/")) {
 				storageUrl = storageUrl.slice(0, -1);
 			}
-			const regex = new RegExp("^" + escapeStringRegexp(storageUrl));
-			if (regex.test(url)) {
-				url = url.replace(regex, uuid.name);
+			// Optimized: Use startsWith and string slice instead of dynamic RegExp compilation/execution
+			if (url.startsWith(storageUrl)) {
+				url = uuid.name + url.slice(storageUrl.length);
 				break;
 			}
 		}
@@ -277,7 +277,8 @@ export default {
 		for (let file of files) {
 			if (!file.uri) continue;
 			const fileUrl = Url.parse(file.uri).url;
-			if (new RegExp("^" + escapeStringRegexp(url)).test(fileUrl)) {
+			// Optimized: Use startsWith instead of compiling and executing dynamic RegExp in a loop
+			if (fileUrl.startsWith(url)) {
 				if (newUrl) {
 					file.uri = Url.join(newUrl, file.filename);
 				} else {
