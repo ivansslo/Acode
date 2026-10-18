@@ -229,6 +229,16 @@ export default {
 		return /^(file|link)$/.test(type);
 	},
 	/**
+	 * Cache for parsed storage list to speed up virtual path resolution
+	 * @type {string|null}
+	 */
+	_cachedStorageListStr: null,
+	/**
+	 * Cache for mapped storage list items
+	 * @type {Array<{name: string, storageUrl: string}>|null}
+	 */
+	_cachedStorageList: null,
+	/**
 	 * Replace matching part of url to alias name by which storage is added
 	 * @param {String} url
 	 * @returns {String}
@@ -243,21 +253,38 @@ export default {
 			}
 		}
 
-		/**@type {string[]} */
-		const storageList = this.parseJSON(localStorage.storageList);
-		if (!Array.isArray(storageList)) return url;
+		const storageListStr = localStorage.storageList;
+		let storageList = this._cachedStorageList;
+
+		if (storageListStr !== this._cachedStorageListStr) {
+			const parsed = this.parseJSON(storageListStr);
+			if (Array.isArray(parsed)) {
+				storageList = parsed
+					.map((uuid) => {
+						let storageUrl = Url.parse(uuid.uri || uuid.url || "").url;
+						if (storageUrl && storageUrl.endsWith("/")) {
+							storageUrl = storageUrl.slice(0, -1);
+						}
+						return {
+							name: uuid.name,
+							storageUrl,
+						};
+					})
+					.filter((item) => item.storageUrl);
+			} else {
+				storageList = null;
+			}
+			this._cachedStorageListStr = storageListStr;
+			this._cachedStorageList = storageList;
+		}
+
+		if (!storageList) return url;
 		const storageListLen = storageList.length;
 
 		for (let i = 0; i < storageListLen; ++i) {
-			const uuid = storageList[i];
-			let storageUrl = Url.parse(uuid.uri || uuid.url || "").url;
-			if (!storageUrl) continue;
-			if (storageUrl.endsWith("/")) {
-				storageUrl = storageUrl.slice(0, -1);
-			}
-			const regex = new RegExp("^" + escapeStringRegexp(storageUrl));
-			if (regex.test(url)) {
-				url = url.replace(regex, uuid.name);
+			const item = storageList[i];
+			if (url.startsWith(item.storageUrl)) {
+				url = item.name + url.slice(item.storageUrl.length);
 				break;
 			}
 		}
