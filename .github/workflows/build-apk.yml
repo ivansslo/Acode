@@ -94,7 +94,7 @@ jobs:
       - name: Build APK
         run: |
           chmod +x utils/scripts/build.sh
-          sh utils/scripts/build.sh ${{ inputs.app_type || 'paid' }} ${{ inputs.build_mode || 'prod' }}
+          npm run build -- ${{ inputs.app_type || 'paid' }} ${{ inputs.build_mode || 'prod' }}
         env:
           TMPDIR: /tmp
           ANDROID_HOME: /usr/local/lib/android/sdk
@@ -117,9 +117,11 @@ jobs:
           name: acode-rocaide-v${{ inputs.build_mode || 'prod' }}-${{ github.run_number }}
           path: platforms/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: warn
+          retention-days: 7
+        continue-on-error: true
 
       - name: Create GitHub Release
-        if: success() && (inputs.build_mode == 'prod' || github.event_name == 'push')
+        if: always() && (inputs.build_mode == 'prod' || github.event_name == 'push')
         uses: softprops/action-gh-release@v3
         with:
           tag_name: rocaide-v${{ github.run_number }}
