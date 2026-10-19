@@ -160,7 +160,7 @@ export default function KeyboardEvent(type, dict = {}) {
 					(altKey ? " Alt" : "") +
 					(metaKey ? " Meta" : "") +
 					(altGraphKey ? " AltGraph" : "")
-			).trim()
+				).trim()
 			: null;
 
 	const key = localDict["key"] + "";
@@ -168,10 +168,10 @@ export default function KeyboardEvent(type, dict = {}) {
 	const location = localDict["location"];
 	const keyCode =
 		localDict["keyCode"] ||
-			(localDict["keyCode"] = (key && key.charCodeAt(0)) || 0);
+		(localDict["keyCode"] = (key && key.charCodeAt(0)) || 0);
 	const charCode =
 		localDict["charCode"] ||
-			(localDict["charCode"] = (char && char.charCodeAt(0)) || 0);
+		(localDict["charCode"] = (char && char.charCodeAt(0)) || 0);
 	const bubbles = localDict["bubbles"];
 	const cancelable = localDict["cancelable"];
 	const repeat = localDict["repeat"];
