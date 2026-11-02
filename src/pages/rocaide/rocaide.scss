@@ -66,6 +66,30 @@
     font-weight: 500;
   }
 
+  /* ── Tabs ──────────────────────────────────────────────────────── */
+  .rocaide-tabs {
+    display: flex;
+    gap: 6px;
+  }
+
+  .rocaide-tab {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid rgba(128, 128, 128, 0.35);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(128, 128, 128, 0.08);
+    color: inherit;
+    transition: background 0.2s;
+  }
+
+  .rocaide-tab--active {
+    background: rgba(56, 137, 253, 0.25);
+    border-color: #3889fd;
+  }
+
   /* ── Toolbar ───────────────────────────────────────────────────── */
   .rocaide-toolbar {
     display: flex;
@@ -123,5 +147,11 @@
     height: 100%;
     border: none;
     display: block;
+  }
+
+  /* Terminal ttyd: latar gelap supaya transisi about:blank → ttyd
+     tidak menyilaukan; ttyd menggambar latar gelapnya sendiri. */
+  .rocaide-frame-wrapper:has(.rocaide-iframe--terminal) {
+    background: #1e1e1e;
   }
 }

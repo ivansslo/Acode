@@ -774,6 +774,9 @@
 	"rocaide_server_started": "Server started at {url}",
 	"rocaide_server_stopped": "Server stopped",
 	"rocaide_unreachable": "Agent gateway :9119 unreachable — start the agent in Termux first",
+	"rocaide_term_unreachable": "Terminal monet :7681 unreachable — open Termux once, then refresh",
+	"rocaide_tab_dashboard": "Dashboard",
+	"rocaide_tab_terminal": "Terminal",
 	"rocaide_failed_start": "Failed to start server: {error}",
 	"rocaide_failed_stop": "Failed to stop server: {error}",
 	"rocaide_node_missing": "Node.js is not available"
