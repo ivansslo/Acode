@@ -44,7 +44,10 @@ export default function openRocAide() {
 		<iframe className="rocaide-iframe" src="about:blank" />
 	);
 	let $iframeTerminal = (
-		<iframe className="rocaide-iframe rocaide-iframe--terminal" src="about:blank" />
+		<iframe
+			className="rocaide-iframe rocaide-iframe--terminal"
+			src="about:blank"
+		/>
 	);
 
 	const $statusBar = (
@@ -63,10 +66,7 @@ export default function openRocAide() {
 		</button>
 	);
 	let $tabTerminal = (
-		<button
-			className="rocaide-tab"
-			onclick={() => switchTab("terminal")}
-		>
+		<button className="rocaide-tab" onclick={() => switchTab("terminal")}>
 			{strings.rocaide_tab_terminal}
 		</button>
 	);
@@ -155,14 +155,8 @@ export default function openRocAide() {
 	function switchTab(name) {
 		activeTab = name;
 		visited[name] = true;
-		$tabDashboard.classList.toggle(
-			"rocaide-tab--active",
-			name === "dashboard",
-		);
-		$tabTerminal.classList.toggle(
-			"rocaide-tab--active",
-			name === "terminal",
-		);
+		$tabDashboard.classList.toggle("rocaide-tab--active", name === "dashboard");
+		$tabTerminal.classList.toggle("rocaide-tab--active", name === "terminal");
 		$iframeDashboard.style.display = name === "dashboard" ? "block" : "none";
 		$iframeTerminal.style.display = name === "terminal" ? "block" : "none";
 		applyFrame(name);
