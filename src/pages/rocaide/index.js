@@ -1,5 +1,5 @@
 /**
- * RocAide Page — Codex CLI Web UI integration for Acode
+ * RocAide Page — konsol RocAI Agent (gateway :9119)
  *
  * Lazy-loads the full page module to keep initial bundle size small.
  */
