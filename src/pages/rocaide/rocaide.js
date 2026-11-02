@@ -62,7 +62,9 @@ export default function openRocAide() {
 		<div className="rocaide-container">
 			<div className="rocaide-header">
 				<h2 className="rocaide-title">RocAI Agent</h2>
-				<p className="rocaide-subtitle">Dashboard agent — gateway lokal :9119</p>
+				<p className="rocaide-subtitle">
+					Dashboard agent — gateway lokal :9119
+				</p>
 			</div>
 			{$statusBar}
 			{$toolbar}

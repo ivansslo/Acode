@@ -54,3 +54,6 @@ IZ = "IZ"
 shft = "shft"
 multline = "multline"
 sav = "sav"
+# kata bahasa Indonesia yang sah, bukan salah ketik
+lokal = "lokal"
+respons = "respons"
