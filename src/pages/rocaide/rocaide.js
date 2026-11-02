@@ -1,8 +1,12 @@
 /**
- * RocAide Page
+ * RocAide Page — konsol RocAI Agent
  *
- * Provides an in-app interface for the Codex CLI web UI (codexapp).
- * Users can start/stop the server and interact with the UI via an iframe.
+ * Membuka dashboard agent RocAI (gateway lokal :9119) langsung di
+ * dalam app. Server agent dijalankan di Termux; loopback 127.0.0.1
+ * terbagi lintas app di satu device sehingga iframe di sini dapat
+ * menjangkaunya. Halaman ini murni probe + tampilan: status gateway
+ * dicek langsung lewat fetch (bukan Runtime.exec), iframe hanya
+ * diarahkan saat gateway hidup.
  */
 
 import "./rocaide.scss";
@@ -13,7 +17,8 @@ import actionStack from "lib/actionStack";
 import { hideAd } from "lib/startAd";
 import helpers from "utils/helpers";
 
-const SERVER_URL = "http://127.0.0.1:18923";
+const AGENT_URL = "http://127.0.0.1:9119";
+const STATUS_POLL_MS = 5000;
 
 export default function openRocAide() {
 	const $page = Page("RocAide");
@@ -22,11 +27,6 @@ export default function openRocAide() {
 	let statusDot = <span className="rocaide-status-dot rocaide-status--off" />;
 	let statusLabel = (
 		<span className="rocaide-status-label">{strings.rocaide_stopped}</span>
-	);
-	let actionBtn = (
-		<button className="rocaide-btn rocaide-btn--start">
-			{strings.rocaide_start}
-		</button>
 	);
 	let $iframe = <iframe className="rocaide-iframe" src="about:blank" />;
 
@@ -39,15 +39,21 @@ export default function openRocAide() {
 
 	const $toolbar = (
 		<div className="rocaide-toolbar">
-			{actionBtn}
 			<button
 				className="rocaide-btn rocaide-btn--open"
-				disabled={true}
 				onclick={() => {
-					system.openInBrowser(SERVER_URL);
+					system.openInBrowser(AGENT_URL);
 				}}
 			>
 				{strings.rocaide_open_in_browser}
+			</button>
+			<button
+				className="rocaide-btn rocaide-btn--refresh"
+				onclick={() => {
+					refreshStatus(true);
+				}}
+			>
+				{strings.rocaide_refresh}
 			</button>
 		</div>
 	);
@@ -55,8 +61,8 @@ export default function openRocAide() {
 	const $container = (
 		<div className="rocaide-container">
 			<div className="rocaide-header">
-				<h2 className="rocaide-title">RocAide — Codex UI</h2>
-				<p className="rocaide-subtitle">Codex CLI web interface for Android</p>
+				<h2 className="rocaide-title">RocAI Agent</h2>
+				<p className="rocaide-subtitle">Dashboard agent — gateway lokal :9119</p>
 			</div>
 			{$statusBar}
 			{$toolbar}
@@ -68,90 +74,48 @@ export default function openRocAide() {
 
 	// ── State ────────────────────────────────────────────────────────────
 
-	let serverRunning = false;
+	let gatewayUp = false;
 
-	function setStatus(running) {
-		serverRunning = running;
+	function setStatus(up) {
+		gatewayUp = up;
 		statusDot.className =
 			"rocaide-status-dot " +
-			(running ? "rocaide-status--on" : "rocaide-status--off");
-		statusLabel.textContent = running
+			(up ? "rocaide-status--on" : "rocaide-status--off");
+		statusLabel.textContent = up
 			? strings.rocaide_running
 			: strings.rocaide_stopped;
-		actionBtn.textContent = running
-			? strings.rocaide_stop
-			: strings.rocaide_start;
-		actionBtn.className =
-			"rocaide-btn " + (running ? "rocaide-btn--stop" : "rocaide-btn--start");
-		$page.querySelector(".rocaide-btn--open").disabled = !running;
-		if (running) {
-			$iframe.src = SERVER_URL;
-		} else {
-			$iframe.src = "about:blank";
-		}
+		$iframe.src = up ? AGENT_URL : "about:blank";
 	}
 
-	async function refreshStatus() {
+	/**
+	 * Probe gateway agent langsung. no-cors membuat respons di-opaque,
+	 * tapi resolve/reject tetap mencerminkan konektivitas TCP+HTTP ke
+	 * :9119 — cukup untuk indikator hidup/mati tanpa menyinggung auth.
+	 */
+	async function refreshStatus(manual = false) {
 		try {
-			if (window.RocAide) {
-				const res = await window.RocAide.isRunning();
-				setStatus(res.running);
-			}
+			await fetch(AGENT_URL, { mode: "no-cors" });
+			setStatus(true);
 		} catch {
 			setStatus(false);
+			if (manual) toast(strings.rocaide_unreachable, "warning");
 		}
 	}
 
-	async function toggleServer() {
-		if (serverRunning) {
-			try {
-				if (window.RocAide) {
-					await window.RocAide.stopServer();
-				}
-				setStatus(false);
-				toast(strings.rocaide_server_stopped);
-			} catch (e) {
-				toast(
-					strings.rocaide_failed_stop.replace("{error}", e.message),
-					"error",
-				);
-			}
-		} else {
-			try {
-				if (window.RocAide) {
-					// First check node
-					const nodeInfo = await window.RocAide.checkNode();
-					if (!nodeInfo.available) {
-						toast(strings.rocaide_node_missing, "warning");
-						return;
-					}
-					await window.RocAide.startServer(18923);
-				}
-				setStatus(true);
-				toast(strings.rocaide_server_started.replace("{url}", SERVER_URL));
-			} catch (e) {
-				toast(
-					strings.rocaide_failed_start.replace("{error}", e.message),
-					"error",
-				);
-				setStatus(false);
-			}
-		}
-	}
+	const pollTimer = setInterval(() => refreshStatus(), STATUS_POLL_MS);
 
 	// ── Wire up events ───────────────────────────────────────────────────
 
-	actionBtn.onclick = toggleServer;
+	$page.onhide = function () {
+		actionStack.remove("rocaide");
+		clearInterval(pollTimer);
+		hideAd();
+	};
 
 	actionStack.push({
 		id: "rocaide",
 		action: $page.hide,
 	});
-
-	$page.onhide = function () {
-		actionStack.remove("rocaide");
-		hideAd();
-	};
 
 	// ── Initial status check ─────────────────────────────────────────────
 

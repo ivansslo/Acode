@@ -9,7 +9,7 @@ import openRocAide from "pages/rocaide";
 export default [
 	"cloud", // icon
 	"rocaide", // id
-	"RocAide", // title
+	"RocAI Agent", // title
 	initApp, // init function
 	false, // prepend
 	onSelected, // onSelected
