@@ -111,8 +111,7 @@
     "ts-loader": "^9.5.7",
     "typescript": "^5.9.3",
     "vscode-languageserver-types": "^3.17.5",
-    "ws": "^8.21.0",
-    "com.foxdebug.acode.rk.rocaide": "file:src/plugins/rocaide"
+    "ws": "^8.21.0"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

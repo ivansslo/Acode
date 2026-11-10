@@ -13,7 +13,6 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
 const jsonFiles = [
 	"package.json",
-	"src/plugins/rocaide/package.json",
 	"src/lang/en-us.json",
 ];
 const jsFiles = [
@@ -23,7 +22,6 @@ const jsFiles = [
 	"src/pages/rocaide/rocaide.js",
 	"src/sidebarApps/rocaide/index.js",
 	"src/sidebarApps/index.js",
-	"src/plugins/rocaide/www/RocAide.js",
 	"hooks/post-process.js",
 ];
 
