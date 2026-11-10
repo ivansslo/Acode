@@ -4,11 +4,11 @@
   <img src='res/logo_1.png' width='250'>
 </p>
 
-RocAide is a lightweight code editor and web IDE for Android — a fork of [Acode](https://github.com/Acode-Foundation/Acode) maintained by [Ivan Ssl](https://github.com/ivansslo). It adds a built-in **Codex CLI web UI integration**: manage the local `codexapp` server and use the Codex web interface without leaving the editor.
+RocAide is a lightweight code editor and web IDE for Android — a fork of [Acode](https://github.com/Acode-Foundation/Acode) maintained by [Ivan Ssl](https://github.com/ivansslo). It adds a built-in **RocAI Agent console**: the agent's dashboard and a full Termux terminal, both embedded in the editor.
 
 ## • Overview
 
-Whether you're working on HTML, CSS, JavaScript, or other programming languages, RocAide empowers you to code on-the-go with confidence — and pairs the editor with an AI coding agent through the embedded Codex UI.
+Whether you're working on HTML, CSS, JavaScript, or other programming languages, RocAide empowers you to code on-the-go with confidence — and pairs the editor with an AI coding agent through the built-in RocAI console.
 
 ## • Features
 
@@ -22,7 +22,7 @@ Everything Acode has:
 
 Plus the RocAide addition:
 
-- **Codex UI integration** — a dedicated sidebar app and page that checks Node.js availability, starts/stops the Codex CLI web UI server on `127.0.0.1:18923`, and renders it in an embedded view or opens it in the browser.
+- **RocAI Agent console** — a built-in page with two tabs: **Dashboard** embeds the agent gateway on `127.0.0.1:9119`, and **Terminal** embeds a full Termux shell (ttyd on `127.0.0.1:7681`, path `/r0cterm/`). Status is polled every 5 s, and either view can be opened in the browser.
 
 ## • Installation
 
@@ -59,7 +59,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed instructions.
 
 ## • Developing a Plugin
 
-For comprehensive documentation on creating plugins, visit the [repository](https://github.com/Acode-Foundation/acode-plugin) and the [Acode Plugin Documentation](https://docs.acode.app/). Plugins built for Acode work in RocAide.
+For comprehensive documentation on creating plugins, visit the [repository](https://github.com/Acode-Foundation/acode-plugin) and the [Acode Plugin Documentation](https://docs.acode.app/). Plugins built for Acode work in RocAide — see [`plugins-src/rocai.dashboard/`](plugins-src/rocai.dashboard/) for a minimal example shipped in this repo.
 
 ## • Credits & License
 
