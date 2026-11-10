@@ -340,10 +340,7 @@ async function onDeviceReady() {
 				const releases = response.data;
 				const release = Array.isArray(releases) ? releases[0] : null;
 				if (!release) {
-					window.log(
-						"error",
-						"No releases found while checking for updates.",
-					);
+					window.log("error", "No releases found while checking for updates.");
 					return;
 				}
 				// Release tags are monikers (e.g. rocdex-v27), not app
@@ -357,12 +354,10 @@ async function onDeviceReady() {
 					/\.apk$/i.test(asset.name || ""),
 				);
 				const latestVersion = apkAsset
-					? apkAsset.name
-							.match(apkVersionFormat)?.[1]
-							.split(".")
-							.map(Number)
+					? apkAsset.name.match(apkVersionFormat)?.[1].split(".").map(Number)
 					: null;
-				const currentVersion = BuildInfo.version.match(appVersionFormat)?.[1]
+				const currentVersion = BuildInfo.version
+					.match(appVersionFormat)?.[1]
 					.split(".")
 					.map(Number);
 				if (!(latestVersion && currentVersion)) {

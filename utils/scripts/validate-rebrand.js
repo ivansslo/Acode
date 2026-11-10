@@ -11,10 +11,7 @@ const { execSync } = require("node:child_process");
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
-const jsonFiles = [
-	"package.json",
-	"src/lang/en-us.json",
-];
+const jsonFiles = ["package.json", "src/lang/en-us.json"];
 const jsFiles = [
 	"src/main.js",
 	"src/lib/commands.js",
