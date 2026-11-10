@@ -331,21 +331,38 @@ async function onDeviceReady() {
 	// Check for app updates
 	if (settings.value.checkForAppUpdates && navigator.onLine) {
 		cordova.plugin.http.sendRequest(
-			"https://api.github.com/repos/Acode-Foundation/Acode/releases/latest",
+			"https://api.github.com/repos/ivansslo/Acode/releases?per_page=1",
 			{
 				method: "GET",
 				responseType: "json",
 			},
 			(response) => {
-				const release = response.data;
-				// assuming version is in format v1.2.3
-				const versionFormat = /^v?(\d+(?:\.\d+)*)/;
-				const latestVersion = release.tag_name
-					.match(versionFormat)?.[1]
-					.split(".")
-					.map(Number);
-				const currentVersion = BuildInfo.version
-					.match(versionFormat)?.[1]
+				const releases = response.data;
+				const release = Array.isArray(releases) ? releases[0] : null;
+				if (!release) {
+					window.log(
+						"error",
+						"No releases found while checking for updates.",
+					);
+					return;
+				}
+				// Release tags are monikers (e.g. rocdex-v27), not app
+				// versions — the real version lives in the APK asset name
+				// (e.g. acode-rocdex-v1.12.8-app-release.apk). The list
+				// endpoint is used because RocAide releases are marked as
+				// prereleases and /releases/latest would 404.
+				const apkVersionFormat = /v(\d+(?:\.\d+)*)/;
+				const appVersionFormat = /^v?(\d+(?:\.\d+)*)/;
+				const apkAsset = (release.assets || []).find((asset) =>
+					/\.apk$/i.test(asset.name || ""),
+				);
+				const latestVersion = apkAsset
+					? apkAsset.name
+							.match(apkVersionFormat)?.[1]
+							.split(".")
+							.map(Number)
+					: null;
+				const currentVersion = BuildInfo.version.match(appVersionFormat)?.[1]
 					.split(".")
 					.map(Number);
 				if (!(latestVersion && currentVersion)) {
@@ -371,7 +388,7 @@ async function onDeviceReady() {
 				if (hasUpdate) {
 					acode.pushNotification(
 						"Update Available",
-						`Acode ${release.tag_name} is now available! Click here to checkout.`,
+						`RocAide ${release.tag_name} is now available! Click here to checkout.`,
 						{
 							icon: "update",
 							type: "warning",
