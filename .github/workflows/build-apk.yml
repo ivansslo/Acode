@@ -80,16 +80,20 @@ jobs:
           fi
           chmod +x platforms/android/gradlew 2>/dev/null || true
 
-      - name: Generate signing keystore
+      - name: Restore signing keystore (stable, from repo secrets)
         run: |
-          keytool -genkeypair -v \
-            -keystore rocaide-release.keystore \
-            -storepass rocaide2024 \
-            -alias rocaide \
-            -keypass rocaide2024 \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=RocAide,OU=Dev,O=RocAide,L=Jakarta,ST=ID,C=ID"
-          echo '{ "android": { "release": { "keystore": "rocaide-release.keystore", "storePassword": "rocaide2024", "alias": "rocaide", "password": "rocaide2024" } } }' > build.json
+          if [ -z "$ROCAIDE_KEYSTORE" ]; then
+            echo "::error::ROCAIDE_KEYSTORE secret is not set — cannot sign with the stable release key"
+            exit 1
+          fi
+          echo "$ROCAIDE_KEYSTORE" | base64 -d > rocaide-release.keystore
+          cat > build.json <<EOF
+          { "android": { "release": { "keystore": "rocaide-release.keystore", "storePassword": "$ROCAIDE_KEYSTORE_PASSWORD", "alias": "$ROCAIDE_KEY_ALIAS", "password": "$ROCAIDE_KEYSTORE_PASSWORD" } } }
+          EOF
+        env:
+          ROCAIDE_KEYSTORE: ${{ secrets.ROCAIDE_KEYSTORE }}
+          ROCAIDE_KEYSTORE_PASSWORD: ${{ secrets.ROCAIDE_KEYSTORE_PASSWORD }}
+          ROCAIDE_KEY_ALIAS: ${{ secrets.ROCAIDE_KEY_ALIAS }}
 
       - name: Build APK
         run: |
